@@ -37,18 +37,18 @@ jobs:
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
-        run: rsync -avz --delete collector/ $SERVER_USER@$SERVER_IP:/var/www/collector.example.com/public_html
+        run: rsync -avz --delete collector/ $SERVER_USER@$SERVER_IP:/var/www/collector.teamate.site/public_html
       
       - name: Deploy reporting
         if: steps.changes.outputs.reporting == 'true'
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
-        run: rsync -avz --delete reporting/ $SERVER_USER@$SERVER_IP:/var/www/reporting.example.com/public_html
+        run: rsync -avz --delete reporting/ $SERVER_USER@$SERVER_IP:/var/www/reporting.teamate.site/public_html
       
       - name: Deploy www
         if: steps.changes.outputs.www == 'true'
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
-        run: rsync -avz --delete www/ $SERVER_USER@$SERVER_IP:/var/www/www.example.com/public_html
+        run: rsync -avz --delete www/ $SERVER_USER@$SERVER_IP:/var/www/teamate.site/public_html
