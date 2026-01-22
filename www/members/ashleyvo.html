@@ -105,6 +105,66 @@
             text-align: center;
         }
     </style>
+    <style>
+        section[aria-label="Interactions"] {
+            text-align: center;
+            padding: 2rem;
+            overflow: hidden; /* Prevents scrollbars when "Rad" flies out */
+            position: relative;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        .flying-rad {
+            position: absolute;
+            pointer-events: none;
+            font-weight: 900;
+            font-style: italic;
+            color: var(--text, #333);
+            font-size: 2rem;
+            white-space: nowrap;
+            z-index: 100;
+            top: 50%;
+            /* Start off-screen left */
+            left: -100px; 
+            animation: fly 3.5s linear forwards;
+        }
+
+        @keyframes fly {
+            from { transform: translateX(0) translateY(-50%) rotate(0deg); }
+            to { transform: translateX(calc(100vw + 200px)) translateY(-50%) rotate(360deg); }
+        }
+    </style>
+    <script type="module">
+        const btn = document.querySelector('#rad-button');
+        
+        btn.addEventListener('click', () => {
+            const rad = document.createElement('span');
+            rad.textContent = 'Rad';
+            rad.className = 'flying-rad';
+            
+            // Append it to the section so it stays contained
+            btn.parentElement.appendChild(rad);
+            
+            // Clean up the element after animation ends to keep the DOM lean
+            rad.addEventListener('animationend', () => {
+                rad.remove();
+            });
+        });
+    </script>
 </head>
 <body>
     <header>
@@ -130,6 +190,15 @@
                 <li>CSE 190 - Algorithms and Systems for Biomolecular Big Data</li>
                 <li>MATH 181A - Introduction to Mathematical Statistics I</li>
             </ul>
+            <p>
+                Outside of academics, you'll probably find me playing video 
+                games or drawing. I also enjoy the word "rad" a lot. It's 
+                pretty rad. You can check out a rad button below.
+            </p>
+        </section>
+
+        <section aria-label="Interactions">
+            <button id="rad-button">Click for something rad</button>
         </section>
 
         <section>
