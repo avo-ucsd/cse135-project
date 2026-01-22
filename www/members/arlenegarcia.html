@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arlene — Personal Page</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+            color: #222;
+            line-height: 1.6;
+        }
+
+        header {
+            background: #fb94af;
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        h1, h2 {
+            margin-top: 0;
+        }
+
+        .fact-box {
+            background: #eef4ff;
+            padding: 1rem;
+            border-left: 4px solid #fb94af;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 0.6rem 1rem;
+            background: ##fb94af;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background: ##fb94af;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Welcome to Arlene's Personal Page</h1>
+</header>
+
+<main>
+    <section>
+        <h2>About Me</h2>
+        <p>Hello! I'm Arlene. I am a third‑year Computer Science Student at UC San Diego.</p>
+    </section>
+
+    <section>
+        <h2>Quick Facts</h2>
+        <div class="fact-box">
+            <strong>Interests:</strong> Drawing, singing, skating, reading, napping.
+        </div>
+        <div class="fact-box">
+            <strong>Skills:</strong> Python, Java, C/C++, HTML, CSS, Javascript
+        </div>
+        <div class="fact-box">
+            <strong>Current Goal:</strong> Get a j*b
+        </div>
+    </section>
+
+    <section>
+        <h2>Fun Button</h2>
+        <p>Click the button to reveal a small message.</p>
+        <button type="button" onclick="revealMessage()">Click Me</button>
+        <p id="hiddenMessage" style="display:none; margin-top:1rem; font-weight:bold;">
+            Thanks for visiting my page!
+        </p>
+    </section>
+</main>
+
+<footer>
+    © <span id="year"></span> Arlene — All rights reserved.
+</footer>
+
+<script>
+    function revealMessage() {
+        const msg = document.getElementById("hiddenMessage");
+        msg.style.display = "block";
+    }
+
+    // Set current year automatically
+    document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
