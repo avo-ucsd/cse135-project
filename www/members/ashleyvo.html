@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Me</title>
+    <style>
+        :root {
+            --bg: #fdfdfd;
+            --text: #333;
+            --accent: #5c59fd;
+            --secondary: #64748b;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text, #333);
+            background-color: var(--bg, #fdfdfd);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        a {
+                text-decoration: none;
+                color: var(--accent, #5c59fd);
+                position: relative;
+                display: inline-block;
+        }
+
+        a::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: var(--accent, #5c59fd);
+            
+            transform: scaleX(0);
+            transform-origin: bottom right;
+            transition: transform 0.3s ease-out;
+        }
+
+        a:hover {
+            color: #2a2899
+        }
+
+        a:hover::after {
+            transform: scaleX(1);
+            transform-origin: bottom left;
+        }
+
+        header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h1 { 
+            margin: 0; 
+            color: var(--accent, #5c59fd); 
+        }
+
+        nav {
+            text-align: end;
+        }
+
+        nav > ul > li {
+            list-style: none;
+        }
+        
+        main {
+            display: grid;
+            gap: 2rem;
+        }
+        
+        h2 { 
+            color: var(--secondary, #64748b); 
+            border-left: 4px solid var(--accent, #5c59fd); 
+            padding-left: 10px; 
+        }
+
+        section {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        section > ul {
+            padding-left: 1.2rem;
+        }
+
+        section > ul > li { 
+            margin-bottom: 0.5rem; 
+        }
+
+        footer {
+            margin-top: 3rem;
+            font-size: 0.9rem;
+            color: var(--secondary, #64748b);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ashley Vo</h1>
+        <nav>
+            <ul>
+                <li><a href="/">Back to Team Ate Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section>
+            <h2>About Me</h2>
+            <p>
+                Hi! I'm a senior Computer Science student at the University
+                of California, San Diego. Here are the classes I'm taking
+                in the 2026 winter quarter:
+            </p>
+            <ul>
+                <li>COGS 108 - Data Science in Practice</li>
+                <li>CSE 135 - Online Database Analytics Applications </li>
+                <li>CSE 190 - Algorithms and Systems for Biomolecular Big Data</li>
+                <li>MATH 181A - Introduction to Mathematical Statistics I</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Some Links</h2>
+            <ul>
+                <li><a href="https://github.com/TeaFive">Personal GitHub (TeaFive)</a></li>
+                <li><a href="https://github.com/avo-ucsd">School GitHub (avo-ucsd)</a></li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>Ashley Vo • Mostly built with Google Gemini, definitely refined by me</p>
+    </footer>
+</body>
+</html>
