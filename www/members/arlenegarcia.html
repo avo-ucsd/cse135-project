@@ -5,26 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arlene — Personal Page</title>
     <style>
+        :root{
+            --bg: #f5f5f5;
+            --text: #222;
+            --accent: #fb94af;
+        }
         body {
             font-family: system-ui, sans-serif;
             margin: 0;
             padding: 0;
-            background: #f5f5f5;
-            color: #222;
+            background: var(--bg, #fb94af);
+            color: var(--text, #222);
             line-height: 1.6;
         }
 
         header {
-            background: #fb94af;
-            color: white;
+            background: var(--accent, #fb94af);
             padding: 2rem 1rem;
+            color: var(--bg, #f5f5f5);
             text-align: center;
         }
 
         main {
             max-width: 800px;
             margin: 2rem auto;
-            background: white;
+            background: var(--bg, #f5f5f5);
             padding: 2rem;
             border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.1);
@@ -35,17 +40,17 @@
         }
 
         .fact-box {
-            background: #eef4ff;
+            background: var(--bg, #f5f5f5);
             padding: 1rem;
-            border-left: 4px solid #fb94af;
+            border-left: 4px solid var(--accent, #fb94af);
             margin: 1rem 0;
             border-radius: 4px;
         }
 
         button {
             padding: 0.6rem 1rem;
-            background: #fb94af;
-            color: white;
+            background: var(--accent, #fb94af);
+            color: var(--bg, #f5f5f5);
             border: none;
             border-radius: 4px;
             cursor: pointer;
@@ -53,14 +58,7 @@
         }
 
         button:hover {
-            background: #fb94af;
-        }
-
-        footer {
-            text-align: center;
-            padding: 1rem;
-            color: #666;
-            font-size: 0.9rem;
+            background: var(--accent, #fb94af);
         }
     </style>
 </head>
@@ -105,7 +103,6 @@
         msg.style.display = "block";
     }
 
-    // Set current year automatically
     document.getElementById("year").textContent = new Date().getFullYear();
 </script>
 
