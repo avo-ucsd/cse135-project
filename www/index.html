@@ -89,6 +89,92 @@
             margin-bottom: 0.5rem; 
         }
 
+        /* Details & Summary Styling */
+        details {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            background: white;
+            transition: box-shadow 0.2s ease;
+        }
+
+        details[open] {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        summary {
+            padding: 0.8rem 1rem;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            -list-style: none; /* Removes default arrow in some browsers */
+            display: flex;
+            align-items: center;
+            outline: none;
+        }
+
+        /* Custom Arrow using CSS instead of the default marker */
+        summary::before {
+            content: '▶';
+            display: inline-block;
+            margin-right: 0.75rem;
+            font-size: 0.8rem;
+            color: var(--accent);
+            transition: transform 0.2s ease;
+        }
+
+        details[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        /* Details & Summary Styling */
+        details {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            background: white;
+            transition: box-shadow 0.2s ease;
+        }
+
+        details[open] {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        summary {
+            padding: 0.8rem 1rem;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        summary::before {
+            content: '▶';
+            display: inline-block;
+            margin-right: 0.75rem;
+            font-size: 0.8rem;
+            color: var(--accent);
+            transition: transform 0.2s ease;
+        }
+
+        details[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        details ul {
+            margin: 0 0 1rem 2.5rem;
+            padding: 0;
+        }
+
+        details li {
+            margin-bottom: 0.5rem;
+        }
+
+        details li a {
+            font-size: 0.95rem;
+        }
+
         footer {
             margin-top: 3rem;
             font-size: 0.9rem;
@@ -106,32 +192,76 @@
         <img src="./assets/team-mascot.png" width="200px" height="200px">
 
         <section>
-          <h2>Members of Team Ate</h2>
-          <ul>
-            <li><a href="/members/arlenegarcia.html">Arlene Garcia</a></li>
-            <li><a href="/members/ashleyvo.html">Ashley Vo</a></li>
-            <li><a href="/members/kietdang.html">Kiet Dang</a></li>
-          </ul>
+            <h2>Members of Team Ate</h2>
+            <ul>
+                <li><a href="/members/arlenegarcia.html">Arlene Garcia</a></li>
+                <li><a href="/members/ashleyvo.html">Ashley Vo</a></li>
+                <li><a href="/members/kietdang.html">Kiet Dang</a></li>
+            </ul>
         </section>
 
         <section>
             <h2>Assignments</h2>
             
             <article>
-              <h3>Homework 1</h3>
-              <ul>
-                <li><a href="/robots.txt">robots.txt</a></li>
-                <li><a href="/hw1/hello.php">hello.php</a></li>
-                <li>This is a <a href="./assets/big_text.txt">compression test with a big text file</a>!</li>
-                <li><a href="/hw1/report.html">report.html</a></li>
-              </ul>
+                <h3>Homework 1</h3>
+                <ul>
+                    <li><a href="/robots.txt">robots.txt</a></li>
+                    <li><a href="/hw1/hello.php">hello.php</a></li>
+                    <li>This is a <a href="./assets/big_text.txt">compression test with a big text file</a>!</li>
+                    <li><a href="/hw1/report.html">report.html</a></li>
+                </ul>
             </article>
 
             <article>
-              <h3>Homework 2</h3>
-              <ul>
-                <li>TBA</li>
-              </ul>
+                <h3>Homework 2</h3> 
+
+                <details>
+                    <summary>Perl</summary>
+                    <ul>
+                        <li><a href="/cgi-bin/perl-hello-html-world.pl">Hello, Perl!</a></li>
+                        <li><a href="/cgi-bin/perl-hello-json-world.pl">Hello, Perl! (JSON)</a></li>
+                        <li><a href="/cgi-bin/perl-env.pl">Environment Variables</a></li>
+                        <li><a href="/cgi-bin/perl-get-echo.pl">GET Echo</a></li>
+                        <li><a href="/cgi-bin/perl-post-echo.pl">POST Echo</a></li>
+                        <li><a href="/cgi-bin/perl-general-echo.pl">General Echo</a></li>
+                        <li><a href="/cgi-bin/perl-sessions-1.pl">Sessioning</a></li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary>Python</summary>
+                    <ul>
+                        <li><a href="/cgi-bin/">Hello, Python!</a></li>
+                        <li><a href="/cgi-bin/">Hello, Python! (JSON)</a></li>
+                        <li><a href="/cgi-bin/">Environment Variables</a></li>
+                        <li><a href="/cgi-bin/">Echo</a></li>
+                        <li><a href="/cgi-bin/">State</a></li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary>C++</summary>
+                    <ul>
+                        <li><a href="/cgi-bin/">Hello, C++!</a></li>
+                        <li><a href="/cgi-bin/">Hello, C++! (JSON)</a></li>
+                        <li><a href="/cgi-bin/">Environment Variables</a></li>
+                        <li><a href="/cgi-bin/">Echo</a></li>
+                        <li><a href="/cgi-bin/">State</a></li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary>TBA</summary>
+                    <ul>
+                        <li><a href="/cgi-bin/">Hello, TBA!</a></li>
+                        <li><a href="/cgi-bin/">Hello, TBA! (JSON)</a></li>
+                        <li><a href="/cgi-bin/">Environment Variables</a></li>
+                        <li><a href="/cgi-bin/">Echo</a></li>
+                        <li><a href="/cgi-bin/">State</a></li>
+                    </ul>
+                </details>
+
             </article>
 
         </section>
