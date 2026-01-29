@@ -17,7 +17,7 @@ int main() {
          << "<h1 align=center>Hello HTML World</h1><hr/>"
          << "<p>Hello World! This page was changed by Ashley of Team Ate!</p>"
          << "<figure>"
-         <<     "<figcaption>My Teammates</figcaption>"
+         <<     "<figcaption><b>My teammates:</b></figcaption>"
          <<     "<blockquote>"
          <<         "\"Why would you willingly want to program in C++?\"" 
          <<     "</blockquote>"
