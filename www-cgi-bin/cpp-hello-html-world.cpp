@@ -17,12 +17,12 @@ int main() {
          << "<h1 align=center>Hello HTML World</h1><hr/>"
          << "<p>Hello World! This page was changed by Ashley of Team Ate!</p>"
          << "<figure>"
-         <<     "<blockquote><p>"
-         <<         "\"Why would you willingly want to program in C++?\"" 
-         <<     "<p></blockquote>"
          <<     "<figcaption>My Teammates</figcaption>"
+         <<     "<blockquote>"
+         <<         "\"Why would you willingly want to program in C++?\"" 
+         <<     "</blockquote>"
          << "</figure>"
-         << "<p>This page was generated with the C++ programming langauge</p>";
+         << "<p>This page was generated with the C++ programming langauge [insert joke about pointers here].</p>";
          
     time_t timestamp;
     time(&timestamp); 
