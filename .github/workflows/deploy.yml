@@ -55,11 +55,21 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }}
         run: rsync -avz --delete www/ $SERVER_USER@$SERVER_IP:/var/www/teamate.site/public_html
       
+      - name: Compile C++ CGI scripts
+        if: steps.changes.outputs.www_cgi == 'true'
+        run: |
+          cd www-cgi-bin
+          for cpp_file in *.cpp; do
+            if [ -f "$cpp_file" ]; then
+              g++ -o "${cpp_file%.cpp}.cgi" "$cpp_file"
+            fi
+          done
+
       - name: Deploy www CGI scripts
         if: steps.changes.outputs.www_cgi == 'true'
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
         run: |
-          rsync -avz --delete www-cgi-bin/ $SERVER_USER@$SERVER_IP:/var/www/teamate.site/cgi-bin/
+          rsync -avz --delete --exclude='*.cpp' www-cgi-bin/ $SERVER_USER@$SERVER_IP:/var/www/teamate.site/cgi-bin/
           ssh $SERVER_USER@$SERVER_IP 'chmod +x /var/www/teamate.site/cgi-bin/*.cgi /var/www/teamate.site/cgi-bin/*.pl /var/www/teamate.site/cgi-bin/*.py 2>/dev/null || true'
