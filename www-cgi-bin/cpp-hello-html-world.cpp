@@ -16,11 +16,13 @@ int main() {
     cout << "<body>"
          << "<h1 align=center>Hello HTML World</h1><hr/>"
          << "<p>Hello World! This page was changed by Ashley of Team Ate!</p>"
-         << "<blockquote><p>"
-         <<     "Why do you want to program in C++?" 
-         << "<p></blockquote>"
-         << "<p>-My teammates</p>"
-         << "<p>This page was generated with the Perl programming langauge</p>";
+         << "<figure>"
+         <<     "<blockquote><p>"
+         <<         "\"Why would you willingly want to program in C++?\"" 
+         <<     "<p></blockquote>"
+         <<     "<figcaption>My Teammates</figcaption>"
+         << "</figure>"
+         << "<p>This page was generated with the C++ programming langauge</p>";
          
     time_t timestamp;
     time(&timestamp); 
