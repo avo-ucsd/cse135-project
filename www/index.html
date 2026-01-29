@@ -182,6 +182,35 @@
             text-align: center;
         }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const HW2_DETAILS_STORAGE_KEY = 'hw2_home_details';
+
+            // 1. Load state on page load
+            const savedState = JSON.parse(localStorage.getItem(HW2_DETAILS_STORAGE_KEY)) || {};
+            const allDetails = document.querySelectorAll('details');
+
+            allDetails.forEach((details, index) => {
+                // Apply saved state based on index (since no IDs exist)
+                if (savedState[index] === true) {
+                    details.open = true;
+                } else if (savedState[index] === false) {
+                    details.open = false;
+                }
+
+                // 2. Listen for toggles to save state
+                details.addEventListener('toggle', () => {
+                    // Get current state of all details
+                    const currentState = {};
+                    allDetails.forEach((el, i) => {
+                        currentState[i] = el.open;
+                    });
+                    
+                    localStorage.setItem(HW2_DETAILS_STORAGE_KEY, JSON.stringify(currentState));
+                });
+            });
+        });
+    </script>
 </head>
 <body>
     <header>
@@ -217,7 +246,7 @@
                 <h3>Homework 2</h3> 
 
                 <details>
-                    <summary>Perl</summary>
+                    <summary>(1) Perl</summary>
                     <ul>
                         <li><a href="/cgi-bin/perl-hello-html-world.pl">Hello, Perl!</a></li>
                         <li><a href="/cgi-bin/perl-hello-json-world.pl">Hello, Perl! (JSON)</a></li>
@@ -230,7 +259,7 @@
                 </details>
 
                 <details>
-                    <summary>Python</summary>
+                    <summary>(2) Python</summary>
                     <ul>
                         <li><a href="/cgi-bin/">Hello, Python!</a></li>
                         <li><a href="/cgi-bin/">Hello, Python! (JSON)</a></li>
@@ -241,7 +270,7 @@
                 </details>
 
                 <details>
-                    <summary>C++</summary>
+                    <summary>(3) C++</summary>
                     <ul>
                         <li><a href="/cgi-bin/">Hello, C++!</a></li>
                         <li><a href="/cgi-bin/">Hello, C++! (JSON)</a></li>
@@ -252,7 +281,7 @@
                 </details>
 
                 <details>
-                    <summary>TBA</summary>
+                    <summary>(4) TBA</summary>
                     <ul>
                         <li><a href="/cgi-bin/">Hello, TBA!</a></li>
                         <li><a href="/cgi-bin/">Hello, TBA! (JSON)</a></li>
