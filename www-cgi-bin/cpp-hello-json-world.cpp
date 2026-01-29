@@ -20,9 +20,9 @@ int main() {
     
     cout << "{"
          <<     "\"time\":\"" << t << "\","
-         <<     "\"IP\":\"" << clientIP << "\""
+         <<     "\"IP\":\"" << clientIP << "\","
          <<     "\"message\":\"This page was generated with C++ and made by Ashley of Team Ate!\","
          <<     "\"title\":\"Hello, C++!\","
-         <<     "\"heading\":\"Hello, C++!\","
+         <<     "\"heading\":\"Hello, C++!\""
          << "}";
 }
