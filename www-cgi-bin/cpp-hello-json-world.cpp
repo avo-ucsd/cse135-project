@@ -1,3 +1,4 @@
+#include <cstring>
 #include <ctime>
 #include <cstdlib>
 #include <iostream>
