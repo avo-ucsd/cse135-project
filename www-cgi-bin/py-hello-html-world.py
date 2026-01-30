@@ -19,9 +19,9 @@ print("""<!DOCTYPE html>
 <h1 align=center>Hello HTML World</h1><hr/>
 <p>Hello World! This page was changed by Ashley of Team Ate!</p>
 <figure>
-    <figcaption><b>My teammates:</b></figcaption>
+    <figcaption><b>Ashley to Vy:</b></figcaption>
     <blockquote>
-        "Why would you willingly want to program in C++?" 
+        "Brother, I'd be concerned if any CS student doesn't know how to Google how to do "Hello World" for a given language 😭"
     </blockquote>
 </figure>
 <p>This page was generated with the Python programming language [insert joke about indentation here].</p>""")
