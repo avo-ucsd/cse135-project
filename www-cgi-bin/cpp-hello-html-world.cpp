@@ -11,7 +11,7 @@ int main() {
          << "<html>"
          << "<head>"
          << "<title>Hello CGI World! (C++)</title>"
-         << "<head>";
+         << "</head>";
 
     cout << "<body>"
          << "<h1 align=center>Hello HTML World</h1><hr/>"
