@@ -48,72 +48,112 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('form');
 
     form.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        // Get form control values
-        const endpoint = form.querySelector('select[id="endpoint"]').value;
         const method = form.querySelector('select[id="http-method"]').value;
+        const endpoint = form.querySelector('select[id="endpoint"]').value;
         const encoding = form.querySelector('select[id="encoding"]').value;
-        
-        // Build the data object from form inputs
-        const bodyAsObject = {
-            "name": form.querySelector('input[id="name"]').value,
-            "favorite-food": form.querySelector('input[id="favorite-food"]').value
-        };
 
-        // Prepare the request based on method and encoding
-        let finalEndpoint = endpoint;
-        let body = null;
-        let headers = {};
-
-        if (method === 'GET') {
-            // For GET, append data as query parameters
-            const params = new URLSearchParams(bodyAsObject);
-            const queryString = params.toString();
-            if (queryString) {
-                finalEndpoint = `${endpoint}?${queryString}`;
+        // For GET and POST, let the native form submission handle it
+        if (method === 'GET' || method === 'POST') {
+            // Set the form action and method
+            form.setAttribute('action', endpoint);
+            form.setAttribute('method', method);
+            
+            // Set encoding based on selection
+            if (encoding === 'application/json') {
+                // JSON encoding for forms isn't natively supported, 
+                // so we need to use fetch even for POST
+                e.preventDefault();
+                submitWithFetch(endpoint, method, encoding);
+            } else {
+                // Let native form submission happen for x-www-form-urlencoded
+                form.setAttribute('enctype', 'application/x-www-form-urlencoded');
+                // Don't prevent default - let it navigate
             }
         } else {
-            // For POST, PUT, DELETE - set body and headers based on encoding
-            if (encoding === 'application/json') {
-                body = JSON.stringify(bodyAsObject);
-                headers['Content-Type'] = 'application/json';
-            } else {
-                body = new URLSearchParams(bodyAsObject);
-                headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            }
+            // For PUT and DELETE, we must use fetch
+            e.preventDefault();
+            submitWithFetch(endpoint, method, encoding);
         }
-
-        // Make the fetch request
-        fetch(finalEndpoint, {
-            method: method,
-            headers: headers,
-            body: body
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(data => {
-            // Display the response
-            displayResponse(data);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            displayResponse(`Error: ${error.message}`, true);
-        });
     });
 });
 
 /**
- * Display the response from the echo endpoint
- * @param {string} data - The response data to display
- * @param {boolean} isError - Whether this is an error message
+ * Submit form data using fetch API (for PUT, DELETE, or JSON encoding)
  */
-function displayResponse(data, isError = false) {
-    // Check if results div exists, if not create it
+function submitWithFetch(endpoint, method, encoding) {
+    const form = document.querySelector('form');
+    
+    // Build the data object from form inputs (excluding control fields)
+    const bodyAsObject = {
+        "name": form.querySelector('input[id="name"]').value,
+        "favorite-food": form.querySelector('input[id="favorite-food"]').value
+    };
+
+    let finalEndpoint = endpoint;
+    let body = null;
+    let headers = {};
+
+    if (method === 'GET') {
+        // For GET, append data as query parameters
+        const params = new URLSearchParams(bodyAsObject);
+        const queryString = params.toString();
+        if (queryString) {
+            finalEndpoint = `${endpoint}?${queryString}`;
+        }
+    } else {
+        // For POST, PUT, DELETE - set body and headers based on encoding
+        if (encoding === 'application/json') {
+            body = JSON.stringify(bodyAsObject);
+            headers['Content-Type'] = 'application/json';
+        } else {
+            body = new URLSearchParams(bodyAsObject);
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+    }
+
+    // Make the fetch request
+    fetch(finalEndpoint, {
+        method: method,
+        headers: headers,
+        body: body
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(data => {
+        // Open the response in a new window/tab to mimic HTTPBin behavior
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+            newWindow.document.write('<pre>' + escapeHtml(data) + '</pre>');
+            newWindow.document.close();
+        } else {
+            // If popup blocked, display inline
+            displayInline(data);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(`Error: ${error.message}`);
+    });
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Display response inline if popup is blocked
+ */
+function displayInline(data) {
+    // Create or get results div
     let resultsDiv = document.getElementById('results');
     if (!resultsDiv) {
         resultsDiv = document.createElement('div');
@@ -124,27 +164,15 @@ function displayResponse(data, isError = false) {
         resultsDiv.style.border = '1px solid #e2e8f0';
         resultsDiv.style.backgroundColor = '#fff';
         
-        // Insert after the form section
-        const formSection = document.querySelector('section');
-        formSection.parentNode.insertBefore(resultsDiv, formSection.nextSibling);
+        const main = document.querySelector('main');
+        main.appendChild(resultsDiv);
     }
 
-    // Style based on whether it's an error
-    if (isError) {
-        resultsDiv.style.backgroundColor = '#fee';
-        resultsDiv.style.borderColor = '#fcc';
-    } else {
-        resultsDiv.style.backgroundColor = '#fff';
-        resultsDiv.style.borderColor = '#e2e8f0';
-    }
-
-    // Add a header
     const header = document.createElement('h3');
-    header.textContent = isError ? 'Error' : 'Response from Echo Endpoint';
+    header.textContent = 'Response (popup was blocked)';
     header.style.marginTop = '0';
-    header.style.color = isError ? '#c00' : '#64748b';
+    header.style.color = '#64748b';
 
-    // Add the response content
     const pre = document.createElement('pre');
     pre.style.whiteSpace = 'pre-wrap';
     pre.style.wordWrap = 'break-word';
@@ -156,11 +184,8 @@ function displayResponse(data, isError = false) {
     pre.style.overflowX = 'auto';
     pre.textContent = data;
 
-    // Clear and update results div
     resultsDiv.innerHTML = '';
     resultsDiv.appendChild(header);
     resultsDiv.appendChild(pre);
-
-    // Scroll to results
     resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
