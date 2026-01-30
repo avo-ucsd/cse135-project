@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../assets/favicon.ico">
+    <script src="echo-form.js"></script>
+    <title>CSE 135 Team Ate - Echo Form</title>
+    <style>
+        :root {
+            --bg: #fdfdfd;
+            --text: #333;
+            --accent: #883eff;
+            --secondary: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text, #333);
+            background-color: var(--bg, #fdfdfd);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        a {
+                text-decoration: none;
+                color: var(--accent, #5c59fd);
+                position: relative;
+                display: inline-block;
+        }
+
+        a::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: var(--accent, #5c59fd);
+            
+            transform: scaleX(0);
+            transform-origin: bottom right;
+            transition: transform 0.3s ease-out;
+        }
+
+        a:hover {
+            color: #2a2899
+        }
+
+        a:hover::after {
+            transform: scaleX(1);
+            transform-origin: bottom left;
+        }
+
+        header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        nav {
+            text-align: end;
+        }
+
+        nav > ul > li {
+            list-style: none;
+        }
+
+        h1 { 
+            margin: 0; 
+            color: var(--accent, #5c59fd); 
+        }
+        
+        main {
+            display: grid;
+            gap: 2rem;
+        }
+        
+        h2 { 
+            color: var(--secondary, #64748b); 
+            border-left: 4px solid var(--accent, #5c59fd); 
+            padding-left: 10px; 
+        }
+
+        section {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        section > ul {
+            padding-left: 1.2rem;
+        }
+
+        section > ul > li { 
+            margin-bottom: 0.5rem; 
+        }
+
+        footer {
+            margin-top: 3rem;
+            font-size: 0.9rem;
+            color: var(--secondary, #64748b);
+            text-align: center;
+        }
+
+        /* Form Layout */
+        form {
+            display: grid;
+            gap: 1.5rem;
+            background: #fff;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        fieldset {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.5rem;
+            display: grid;
+            gap: 1rem;
+        }
+
+        legend {
+            font-weight: bold;
+            padding: 0 0.5rem;
+            color: var(--secondary);
+        }
+
+        /* Labels and Inputs */
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 1rem;
+            box-sizing: border-box; /* Essential for 100% width with padding */
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus, 
+        textarea:focus, 
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(136, 62, 255, 0.1);
+        }
+
+        /* Checkboxes and Radios */
+        input[type="checkbox"], 
+        input[type="radio"] {
+            accent-color: var(--accent);
+            width: 1.1rem;
+            height: 1.1rem;
+            vertical-align: middle;
+        }
+
+        /* Button Styling */
+        input[type="submit"] {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: filter 0.2s, transform 0.1s;
+            width: fit-content;
+        }
+
+        input[type="submit"]:hover {
+            filter: brightness(1.1);
+        }
+
+        input[type="submit"]:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <header>
+       <h1><a href="/">CSE 135 WI26</a></h1>
+        <nav>
+            <ul>
+                <li><a href="/">Back to Team Ate Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section>
+            <h2>Echo Form</h2>
+            <form>
+                <!-- 
+                    * a language pull-down that allow you to target which echo endpoint you are 
+                      hitting
+                    * a method pull-down that allows you to set the HTTP method you are using.  
+                      Make sure you use GET, POST, PUT, and DELETE.  You may wish to change up 
+                      the fields to make contextual sense for these
+                    * an encoding pull-down that has minimally x-www-form-urlencoded and 
+                      application/json as encoding choices to send
+                    * a set of field(s) that you will send with your request
+                    * a submit button 
+                -->
+                    <form-field>
+                        <label for="language">Choose a language:</label>
+                        <select name="language" id="language">
+                            <option value="perl">Perl</option>
+                            <option value="python">Python</option>
+                            <option value="cpp">C++</option>
+                            <option value="php">PHP</option>
+                        </select>
+                    </form-field>
+
+                    <form-field>
+                        <label for="method">Choose an HTTP method:</label>
+                        <select name="method" id="method">
+                            <option value="get">GET</option>
+                            <option value="post">POST</option>
+                            <option value="put">PUT</option>
+                            <option value="delete">DELETE</option>
+                        </select>
+                    </form-field>
+
+                    <form-field>
+                        <label for="encoding">Choose an encoding:</label>
+                        <select name="encoding" id="encoding">
+                            <option value="x-www-form-urlencoded">x-www-form-urlencoded</option>
+                            <option value="application-json">application/json</option>
+                        </select>
+                    </form-field>
+
+                    <h3>Optional Fields</h3>
+                    <form-field>
+                        <label for="name">Enter your name:</label>
+                        <input name="name" id="name" type="text">
+                    </form-field>
+
+                    <form-field>
+                        <label for="favorite-food">Enter your favorite food:</label>
+                        <input name="favorite-food" id="favorite-food" type="text">
+                    </form-field>
+
+                    <input type="submit">
+            </form>
+        </section>
+    </main>
+</body>
+</html>
