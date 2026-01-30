@@ -221,22 +221,22 @@
                     * a submit button 
                 -->
                     <form-field>
-                        <label for="language">Choose a language:</label>
-                        <select name="language" id="language">
-                            <option value="perl">Perl</option>
-                            <option value="python">Python</option>
-                            <option value="cpp">C++</option>
-                            <option value="php">PHP</option>
+                        <label for="endpoint">Choose a language:</label>
+                        <select name="endpoint" id="endpoint">
+                            <option value="/cgi-bin/perl-general-echo.pl">Perl</option>
+                            <option value="/cgi-bin/py-general-echo.py">Python</option>
+                            <option value="/cgi-bin/cpp-general-echo.cgi">C++</option>
+                            <option value="/cgi-bin/php-general-echo.php">PHP</option>
                         </select>
                     </form-field>
 
                     <form-field>
-                        <label for="method">Choose an HTTP method:</label>
-                        <select name="method" id="method">
-                            <option value="get">GET</option>
-                            <option value="post">POST</option>
-                            <option value="put">PUT</option>
-                            <option value="delete">DELETE</option>
+                        <label for="http-method">Choose an HTTP method:</label>
+                        <select name="http-method" id="http-method">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
                         </select>
                     </form-field>
 
@@ -244,7 +244,7 @@
                         <label for="encoding">Choose an encoding:</label>
                         <select name="encoding" id="encoding">
                             <option value="x-www-form-urlencoded">x-www-form-urlencoded</option>
-                            <option value="application-json">application/json</option>
+                            <option value="application/json">application/json</option>
                         </select>
                     </form-field>
 
