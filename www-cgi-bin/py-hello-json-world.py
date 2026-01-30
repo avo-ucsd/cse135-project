@@ -6,8 +6,8 @@ import socket
 
 ###### Sending GET Response
 # Sending header 
-print("Cache-Control: no-cache\n \
-       Content-Type: text/html\n\n")
+print("Cache-Control: no-cache\n")
+print("Content-Type: text/html\n\n")
 
 # Get the current date and time
 current_datetime = datetime.datetime.now()
