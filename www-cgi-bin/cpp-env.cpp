@@ -18,7 +18,7 @@ int main() {
          << "<hr>";
      
      for (char** env = environ; *env != nullptr; ++env) {
-          cout << *env << "\n";
+          cout << "<p>" << *env << "</p>\n";
      }
 
     cout << "</body>"
