@@ -6,8 +6,8 @@ import socket
 
 ###### Sending GET Response
 # Sending header 
-print("Cache-Control: no-cache\n")
-print("Content-Type: text/html\n\n")
+print("Cache-Control: no-cache")
+print("Content-Type: text/html\n")
 
 # Sending body
 print("""<!DOCTYPE html>
