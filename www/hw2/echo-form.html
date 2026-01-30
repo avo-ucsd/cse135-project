@@ -209,57 +209,46 @@
         <section>
             <h2>Echo Form</h2>
             <form>
-                <!-- 
-                    * a language pull-down that allow you to target which echo endpoint you are 
-                      hitting
-                    * a method pull-down that allows you to set the HTTP method you are using.  
-                      Make sure you use GET, POST, PUT, and DELETE.  You may wish to change up 
-                      the fields to make contextual sense for these
-                    * an encoding pull-down that has minimally x-www-form-urlencoded and 
-                      application/json as encoding choices to send
-                    * a set of field(s) that you will send with your request
-                    * a submit button 
-                -->
-                    <form-field>
-                        <label for="endpoint">Choose a language:</label>
-                        <select name="endpoint" id="endpoint">
-                            <option value="/cgi-bin/perl-general-echo.pl">Perl</option>
-                            <option value="/cgi-bin/py-general-echo.py">Python</option>
-                            <option value="/cgi-bin/cpp-general-echo.cgi">C++</option>
-                            <option value="/cgi-bin/php-general-echo.php">PHP</option>
-                        </select>
-                    </form-field>
+                <form-field>
+                    <label for="endpoint">Choose a language:</label>
+                    <select name="endpoint" id="endpoint">
+                        <option value="/cgi-bin/perl-general-echo.pl">Perl</option>
+                        <option value="/cgi-bin/py-general-echo.py">Python</option>
+                        <option value="/cgi-bin/cpp-general-echo.cgi">C++</option>
+                        <option value="/cgi-bin/php-general-echo.php">PHP</option>
+                    </select>
+                </form-field>
 
-                    <form-field>
-                        <label for="http-method">Choose an HTTP method:</label>
-                        <select name="http-method" id="http-method">
-                            <option value="GET">GET</option>
-                            <option value="POST">POST</option>
-                            <option value="PUT">PUT</option>
-                            <option value="DELETE">DELETE</option>
-                        </select>
-                    </form-field>
+                <form-field>
+                    <label for="http-method">Choose an HTTP method:</label>
+                    <select name="http-method" id="http-method">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </form-field>
 
-                    <form-field>
-                        <label for="encoding">Choose an encoding:</label>
-                        <select name="encoding" id="encoding">
-                            <option value="x-www-form-urlencoded">x-www-form-urlencoded</option>
-                            <option value="application/json">application/json</option>
-                        </select>
-                    </form-field>
+                <form-field>
+                    <label for="encoding">Choose an encoding:</label>
+                    <select name="encoding" id="encoding">
+                        <option value="x-www-form-urlencoded">x-www-form-urlencoded</option>
+                        <option value="application/json">application/json</option>
+                    </select>
+                </form-field>
 
-                    <h3>Optional Fields</h3>
-                    <form-field>
-                        <label for="name">Enter your name:</label>
-                        <input name="name" id="name" type="text">
-                    </form-field>
+                <h3>Optional Fields</h3>
+                <form-field>
+                    <label for="name">Enter your name:</label>
+                    <input name="name" id="name" type="text">
+                </form-field>
 
-                    <form-field>
-                        <label for="favorite-food">Enter your favorite food:</label>
-                        <input name="favorite-food" id="favorite-food" type="text">
-                    </form-field>
+                <form-field>
+                    <label for="favorite-food">Enter your favorite food:</label>
+                    <input name="favorite-food" id="favorite-food" type="text">
+                </form-field>
 
-                    <input type="submit">
+                <input type="submit">
             </form>
         </section>
     </main>
