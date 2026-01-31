@@ -193,6 +193,18 @@
         input[type="submit"]:active {
             transform: scale(0.98);
         }
+
+        noscript {
+            display: block; /* Required because noscript is inline by default */
+            background-color: #fee2e2; /* Light red */
+            color: #991b1b; /* Dark red */
+            padding: 1rem;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -208,59 +220,63 @@
     <main>
         <section>
             <h2>Echo Form</h2>
-            <form>
-                <!-- 
-                    * a language pull-down that allow you to target which echo endpoint you are 
-                      hitting
-                    * a method pull-down that allows you to set the HTTP method you are using.  
-                      Make sure you use GET, POST, PUT, and DELETE.  You may wish to change up 
-                      the fields to make contextual sense for these
-                    * an encoding pull-down that has minimally x-www-form-urlencoded and 
-                      application/json as encoding choices to send
-                    * a set of field(s) that you will send with your request
-                    * a submit button 
-                -->
-                    <form-field>
-                        <label for="language">Choose a language:</label>
-                        <select name="language" id="language">
-                            <option value="perl">Perl</option>
-                            <option value="python">Python</option>
-                            <option value="cpp">C++</option>
-                            <option value="php">PHP</option>
-                        </select>
-                    </form-field>
 
-                    <form-field>
-                        <label for="method">Choose an HTTP method:</label>
-                        <select name="method" id="method">
-                            <option value="get">GET</option>
-                            <option value="post">POST</option>
-                            <option value="put">PUT</option>
-                            <option value="delete">DELETE</option>
-                        </select>
-                    </form-field>
+            <noscript> 
+                JavaScript is disabled, so this form will have limited functionality.
+                Specifically, this form will submit to the <strong>C++ endpoint</strong>
+                with the <strong>POST</strong> method with <strong>x-www-form-urlencoded</strong>
+                encoding. Turn on JavaScript to be able to change this behavior with
+                the dropdowns.
+            </noscript>
 
-                    <form-field>
-                        <label for="encoding">Choose an encoding:</label>
-                        <select name="encoding" id="encoding">
-                            <option value="x-www-form-urlencoded">x-www-form-urlencoded</option>
-                            <option value="application-json">application/json</option>
-                        </select>
-                    </form-field>
+            <form action="/cgi-bin/cpp-general-echo.cgi" method="POST">
+                <form-field>
+                    <label for="endpoint">Choose a language:</label>
+                    <select name="endpoint" id="endpoint">
+                        <option value="/cgi-bin/perl-general-echo.pl">Perl</option>
+                        <option value="/cgi-bin/py-general-echo.py">Python</option>
+                        <option value="/cgi-bin/cpp-general-echo.cgi">C++</option>
+                        <option value="/cgi-bin/php-general-echo.php">PHP</option>
+                    </select>
+                </form-field>
 
-                    <h3>Optional Fields</h3>
-                    <form-field>
-                        <label for="name">Enter your name:</label>
-                        <input name="name" id="name" type="text">
-                    </form-field>
+                <form-field>
+                    <label for="http-method">Choose an HTTP method:</label>
+                    <select name="http-method" id="http-method">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </form-field>
 
-                    <form-field>
-                        <label for="favorite-food">Enter your favorite food:</label>
-                        <input name="favorite-food" id="favorite-food" type="text">
-                    </form-field>
+                <form-field>
+                    <label for="encoding">Choose an encoding:</label>
+                    <select name="encoding" id="encoding">
+                        <option value="x-www-form-urlencoded">x-www-form-urlencoded</option>
+                        <option value="application/json">application/json</option>
+                    </select>
+                </form-field>
 
-                    <input type="submit">
+                <h3>Optional Fields</h3>
+                <form-field>
+                    <label for="name">Enter your name:</label>
+                    <input name="name" id="name" type="text">
+                </form-field>
+
+                <form-field>
+                    <label for="favorite-food">Enter your favorite food:</label>
+                    <input name="favorite-food" id="favorite-food" type="text">
+                </form-field>
+
+                <input type="submit">
             </form>
+        </section>
+
+        <section id="form-output"> 
+            <h2>Echo Output</h2>
+            <article id="echo-output">
+            </article>
         </section>
     </main>
 </body>
