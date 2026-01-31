@@ -47,10 +47,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
         .then(response => response.text())
         .then(data => {
             // Display the response somewhere
-            // console.log('Response:', data);
+            console.log('Response:', data);
         })
         .catch(error => {
-            // console.error('Error:', error);
+            console.error('Error:', error);
         });
     });
 });
