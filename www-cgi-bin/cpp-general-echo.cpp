@@ -16,7 +16,8 @@ int main() {
          << "</head>"
          << "<body>";
 
-    cout << "<h1 align=\"center\">General Request Echo (C++)</h1>";
+    cout << "<h1 align=\"center\">General Request Echo (C++)</h1>"
+         << "<hr>";
 
     const char* hostName = getenv("HTTP_HOST");
     const char* userAgent = getenv("HTTP_USER_AGENT");

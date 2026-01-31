@@ -193,6 +193,18 @@
         input[type="submit"]:active {
             transform: scale(0.98);
         }
+
+        noscript {
+            display: block; /* Required because noscript is inline by default */
+            background-color: #fee2e2; /* Light red */
+            color: #991b1b; /* Dark red */
+            padding: 1rem;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -208,7 +220,16 @@
     <main>
         <section>
             <h2>Echo Form</h2>
-            <form>
+
+            <noscript> 
+                JavaScript is disabled, so this form will have limited functionality.
+                Specifically, this form will submit to the <strong>C++ endpoint</strong>
+                with the <strong>POST</strong> method with <strong>x-www-form-urlencoded</strong>
+                encoding. Turn on JavaScript to be able to change this behavior with
+                the dropdowns.
+            </noscript>
+
+            <form action="/cgi-bin/cpp-general-echo.cgi" method="POST">
                 <form-field>
                     <label for="endpoint">Choose a language:</label>
                     <select name="endpoint" id="endpoint">
