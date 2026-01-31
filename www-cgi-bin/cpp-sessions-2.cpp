@@ -59,10 +59,10 @@ int main() {
          << "</head>";
 
     cout << "<body>"
-         << "<h1 align=\"center\">C++ Sessions (Page 1)</h1><hr/>";
+         << "<h1 align=\"center\">C++ Sessions (Page 2)</h1><hr/>";
 
     cout << "<section style=\"margin: auto; padding: 1rem; width: 50vw\">"
-         <<     "<p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>";
+         <<     "<p>Hello! This is sessions with C++. You are on <strong>page 2</strong>.</p>";
 
     if (username.empty()) {
         cout << "<p>You do <strong>not</strong> have a name yet.</p>";
@@ -72,7 +72,7 @@ int main() {
 
     cout <<     "<ul>"
          <<         "<li><a href=\"/cgi-bin/cpp-cgi-form.cgi\">C++ CGI Form</a></li>"
-         <<         "<li><a href=\"/cgi-bin/cpp-sessions-2.cgi\">Session Page 2</a></li>"
+         <<         "<li><a href=\"/cgi-bin/cpp-sessions-1.cgi\">Session Page 1</a></li>"
          <<         "<li><a href=\"/\">Back to Team Ate home</a></li>"
          <<     "</ul>"
          <<     "<form action=\"/cgi-bin/cpp-destroy-session.cgi\" method=\"get\">"
