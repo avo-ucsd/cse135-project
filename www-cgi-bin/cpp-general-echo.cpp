@@ -22,12 +22,13 @@ int main() {
     const char* userAgent = getenv("HTTP_USER_AGENT");
     const char* clientIP = getenv("REMOTE_ADDR");
     const char* requestMethod = getenv("REQUEST_METHOD");
+    const char* queryString = getenv("QUERY_STRING");
+    const char* protocol = getenv("SERVER_PROTOCOL");
 
     // Handle data
     string body = "(null)";
     if (requestMethod != nullptr) {
         if (strcmp(requestMethod, "GET") == 0) {
-            const char* queryString = getenv("QUERY_STRING");
             if (queryString != nullptr) {
                 body = queryString;
             }
@@ -51,23 +52,35 @@ int main() {
     cout << "<table>"
          <<     "<tbody>" 
          <<         "<tr>" 
-         <<             "<td>Host Name:</td>"
+         <<             "<td><b>HTTP Protocol:</b></td>"
+         <<             "<td>" << (protocol ? protocol : "(null)") << "</td>"
+         <<         "</tr>" 
+         <<         "<tr>" 
+         <<             "<td><b>HTTP Method:</b></td>"
+         <<             "<td>" << (requestMethod ? requestMethod : "(null)") << "</td>"
+         <<         "</tr>" 
+         <<         "<tr>" 
+         <<             "<td><b>Host Name:</b></td>"
          <<             "<td>" << (hostName ? hostName : "(null)") << "</td>"
          <<         "</tr>" 
          <<         "<tr>" 
-         <<             "<td>Message Body (data):</td>"
+         <<             "<td><b>Query String:</b></td>"
+         <<             "<td>" << (queryString ? queryString : "") << "</td>"
+         <<         "</tr>" 
+         <<         "<tr>" 
+         <<             "<td><b>Message Body:</b></td>"
          <<             "<td>" << body << "</td>"
          <<         "</tr>" 
          <<         "<tr>" 
-         <<             "<td>Time:</td>"
+         <<             "<td><b>Time:</b></td>"
          <<             "<td>" << ctime(&timestamp) << "</td>"
          <<         "</tr>" 
          <<         "<tr>" 
-         <<             "<td>User Agent Header:</td>"
+         <<             "<td><b>User Agent Header:</b></td>"
          <<             "<td>" << (userAgent ? userAgent : "(null)") << "</td>"
          <<         "</tr>" 
          <<         "<tr>" 
-         <<             "<td>IP Address:</td>"
+         <<             "<td><b>IP Address:</b></td>"
          <<             "<td>" << (clientIP ? clientIP : "(null)") << "</td>"
          <<         "</tr>" 
          <<     "</tbody>" 
