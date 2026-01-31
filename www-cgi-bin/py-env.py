@@ -19,11 +19,11 @@ print("""<!DOCTYPE html>
 <body>
 <h1 align=\"center\">Environment Variables (Python Edition)</h1><hr>""")
 
-for env in os.environ:
-    if (env):
-        print("<p>" + env + "</p>")
+for header, header_value in os.environ.items():
+    if header and header_value:
+        print(f"<p>{header} = {header_value}</p>")
     else:
-        print("<p style='color:red'>Error: This environment variable not found.</p>")
+        print(f"<p style='color:red'>Error: This environment variable {header} not found.</p>")
 
 print("""</body>
 </html>""")

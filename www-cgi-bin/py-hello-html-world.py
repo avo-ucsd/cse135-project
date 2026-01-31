@@ -17,7 +17,7 @@ print("""<!DOCTYPE html>
 <head>
 <body>
 <h1 align=center>Hello HTML World</h1><hr/>
-<p>Hello World! This page was changed by Ashley of Team Ate!</p>
+<p>Hello World! This page was changed by Vy and Ashley of Team Ate!</p>
 <figure>
     <figcaption><b>Ashley to Vy:</b></figcaption>
     <blockquote>
