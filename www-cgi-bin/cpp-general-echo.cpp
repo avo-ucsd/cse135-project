@@ -29,9 +29,7 @@ int main() {
     string body = "(null)";
     if (requestMethod != nullptr) {
         if (strcmp(requestMethod, "GET") == 0) {
-            if (queryString != nullptr) {
-                body = queryString;
-            }
+            body = "";
         } else {
             char* contentLengthStr = getenv("CONTENT_LENGTH");
             if (contentLengthStr != nullptr) {
