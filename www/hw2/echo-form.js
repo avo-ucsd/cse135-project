@@ -48,6 +48,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
         .then(data => {
             // Display the response somewhere
             console.log('Response:', data);
+            const output = document.querySelector('#echo-output');
+            output.innerHTML = data;
         })
         .catch(error => {
             console.error('Error:', error);
