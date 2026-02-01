@@ -3,7 +3,6 @@
 
 import datetime
 import os
-import socket
 
 ###### Sending GET Response
 # Sending header 
@@ -31,7 +30,7 @@ print("""<!DOCTYPE html>
 current_datetime = datetime.datetime.now()
 print("""<p>This program was generated at: %f </p>""" % (current_datetime))
 
-clientIP       = os.environ.get("REMOTE_ADDR")
+clientIP = os.environ.get("REMOTE_ADDR")
 if (clientIP):
     print(f"<p>Your current IP address is: {clientIP}</p>%")
 else:
