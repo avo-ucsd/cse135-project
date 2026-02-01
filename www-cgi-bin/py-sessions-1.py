@@ -11,13 +11,34 @@ cookie = cookies.SimpleCookie(os.environ.get("HTTP_COOKIE"))
 username = cookie["username"].value if "username" in cookie else "(null)"
 
 print(f"""
+<!DOCTYPE html>
 <html>
+<head>
+<title>Python C++ Sessions</title>
+</head>
+    
 <body>
-<h1>Session Page 1</h1>
-<p>Saved Name: {username}</p>
+<h1 align=\"center\">C++ Sessions (Page 1)</h1><hr/>
+<section style=\"margin: auto; padding: 1rem; width: 50vw\">
+    <p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>
+""")
 
-<p><a href="py-sessions-2.py">Go to Session Page 2</a></p>
-<p><a href="py-destroy-session.py">Destroy Session</a></p>
+if (username):
+    print("<p>Hello {username}, looking S3XY today.</p>")
+else:
+    print("<p>You do <strong>not</strong> have a name yet. Womp Womp.</p>")
+
+print(f"""
+    <ul>
+        <li><a href=\"/cgi-bin/cpp-cgi-form.cgi\">C++ CGI Form</a></li>
+        <li><a href=\"/cgi-bin/cpp-sessions-2.cgi\">Session Page 2</a></li>
+        <li><a href=\"/\">Back to Team Ate home</a></li>
+    </ul>
+    <form action=\"/cgi-bin/cpp-destroy-session.cgi\" method=\"get\">
+        <button type=\"submit\">Destroy Session</button>
+    </form>
+</section>
+
 </body>
 </html>
 """)
