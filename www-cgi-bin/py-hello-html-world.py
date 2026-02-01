@@ -21,18 +21,18 @@ print("""<!DOCTYPE html>
 <figure>
     <figcaption><b>Ashley to Vy:</b></figcaption>
     <blockquote>
-        "Brother, I'd be concerned if any CS student doesn't know how to Google how to do "Hello World" for a given language 😭"
+        "Brother, I'd be concerned if any CS student doesn't know how to Google how to do "Hello World" for a given language"
     </blockquote>
 </figure>
 <p>This page was generated with the Python programming language [insert joke about indentation here].</p>""")
 
 # Get the current date and time
 current_datetime = datetime.datetime.now()
-print("""<p>This program was generated at: %f </p>""" % (current_datetime))
+print(f"<p>This program was generated at: {current_datetime}</p>")
 
 clientIP = os.environ.get("REMOTE_ADDR")
 if (clientIP):
-    print(f"<p>Your current IP address is: {clientIP}</p>%")
+    print(f"<p>Your current IP address is: {clientIP}</p>")
 else:
     print("<p>There was an error with finding your IP address. :(</p>")
 
