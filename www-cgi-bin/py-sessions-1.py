@@ -24,14 +24,14 @@ print(f"""
 """)
 
 if (username):
-    print("<p>Hello {username}, looking S3XY today.</p>")
+    print(f"<p>Hello {username}, looking S3XY today.</p>")
 else:
     print("<p>You do <strong>not</strong> have a name yet. Womp Womp.</p>")
 
 print(f"""
     <ul>
-        <li><a href=\"/cgi-bin/cpp-cgi-form.cgi\">C++ CGI Form</a></li>
-        <li><a href=\"/cgi-bin/cpp-sessions-2.cgi\">Session Page 2</a></li>
+        <li><a href=\"/cgi-bin/py-cgi-form.py\">C++ CGI Form</a></li>
+        <li><a href=\"/cgi-bin/py-sessions-2.py\">Session Page 2</a></li>
         <li><a href=\"/\">Back to Team Ate home</a></li>
     </ul>
     <form action=\"/cgi-bin/cpp-destroy-session.cgi\" method=\"get\">

@@ -24,7 +24,7 @@ print(f"""
 """)
 
 if (username):
-    print("<p>Wake up {username}, we got a city to burn. [insert 2077 BGM]</p>")
+    print(f"<p>Wake up {username}, we got a city to burn. [insert 2077 BGM]</p>")
 else:
     print("""
         <p>Welcome tarnished, come to the Land Between for the Elden Ring hmm?
@@ -36,7 +36,7 @@ else:
 print(f"""
     <ul>
         <li><a href=\"/cgi-bin/py-cgi-form.py\">C++ CGI Form</a></li>
-        <li><a href=\"/cgi-bin/py-sessions-1.py\">Session Page 2</a></li>
+        <li><a href=\"/cgi-bin/py-sessions-1.py\">Session Page 1</a></li>
         <li><a href=\"/\">Back to Team Ate home</a></li>
     </ul>
     <form action=\"/cgi-bin/py-destroy-session.py\" method=\"get\">
