@@ -6,8 +6,7 @@ from http import cookies
 SESSION_DIR = "/tmp/python_sessions/"
 COOKIE_NAME = "CGISESSID"
 
-
-def get_session_id():
+def getSessionId():
     cookies = os.environ.get("HTTP_COOKIE")
     if not cookies:
         return ""
@@ -19,12 +18,12 @@ def get_session_id():
 
     return ""
 
-def get_username(session_id):
-    if not session_id:
+def getUsername(sessionId):
+    if not sessionId:
         return ""
 
     try:
-        with open(SESSION_DIR + session_id, "r") as f:
+        with open(SESSION_DIR + sessionId, "r") as f:
             return f.readline().strip()
     except FileNotFoundError:
         return ""
@@ -32,8 +31,8 @@ def get_username(session_id):
 # -----------------------------
 # Main logic
 # -----------------------------
-session_id = get_session_id()
-username = get_username(session_id)
+sessionId = getSessionId()
+username = getUsername(sessionId)
 
 print("Cache-Control: no-cache")
 print("Content-Type: text/html\n")

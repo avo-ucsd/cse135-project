@@ -55,7 +55,7 @@ if not username:
     <p>Welcome tarnished, come to the Land Between for the Elden Ring hmm?
     Unfortunately for you, however, you are <strong>MAIDENLESS</strong>. <br>
     You are currently do <strong>NOT</strong> a name yet. Create a CGI Form, link down below, to proceed your journey.</p>
-    <img src="https://media1.tenor.com/m/3bQqZHTOsgcAAAAd/no-maidens-elden-ring.gif" width="10vw" alt="You got 0 maidens my dude">
+    <img src="https://media1.tenor.com/m/3bQqZHTOsgcAAAAd/no-maidens-elden-ring.gif" width="150vw" alt="You got 0 maidens my dude">
     """)
 else:
     print(f"<p>Wake up {username}, we got a city to burn. [insert 2077 BGM]</p>")
