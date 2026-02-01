@@ -3,12 +3,40 @@
 import os
 from http import cookies
 
+SESSION_DIR = "/tmp/python_sessions/"
+COOKIE_NAME = "CGISESSID"
+
+
+def get_session_id():
+    cookies = os.environ.get("HTTP_COOKIE")
+    if not cookies:
+        return ""
+
+    for part in cookies.split(";"):
+        part = part.strip()
+        if part.startswith(COOKIE_NAME + "="):
+            return part.split("=", 1)[1]
+
+    return ""
+
+def get_username(session_id):
+    if not session_id:
+        return ""
+
+    try:
+        with open(SESSION_DIR + session_id, "r") as f:
+            return f.readline().strip()
+    except FileNotFoundError:
+        return ""
+
+# -----------------------------
+# Main logic
+# -----------------------------
+session_id = get_session_id()
+username = get_username(session_id)
+
 print("Cache-Control: no-cache")
 print("Content-Type: text/html\n")
-
-cookie = cookies.SimpleCookie(os.environ.get("HTTP_COOKIE"))
-
-username = cookie["username"].value if "username" in cookie else "(null)"
 
 print(f"""
 <!DOCTYPE html>
@@ -23,7 +51,7 @@ print(f"""
     <p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>
 """)
 
-if (username is not None and username != "null"):
+if (username is not None):
     print(f"<p>Hello {username}, looking S3XY today.</p>")
 else:
     print("<p>You do <strong>not</strong> have a name yet. Womp Womp.</p>")
