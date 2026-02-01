@@ -2,6 +2,7 @@
 #py-hello-html-world.py
 
 import datetime
+import os
 import socket
 
 ###### Sending GET Response
@@ -30,13 +31,9 @@ print("""<!DOCTYPE html>
 current_datetime = datetime.datetime.now()
 print("""<p>This program was generated at: %f </p>""" % (current_datetime))
 
-def get_local_ip():
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    return ip_address
-client_ip = get_local_ip()
-if (client_ip):
-    print(f"<p>Your current IP address is: {client_ip}</p>%")
+clientIP       = os.environ.get("REMOTE_ADDR")
+if (clientIP):
+    print(f"<p>Your current IP address is: {clientIP}</p>%")
 else:
     print("<p>There was an error with finding your IP address. :(</p>")
 

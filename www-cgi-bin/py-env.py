@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 #py-env.py
 
-import datetime
-import socket
 import os
 
 ###### Sending GET Response
@@ -20,7 +18,10 @@ print("""<!DOCTYPE html>
 <h1 align=\"center\">Environment Variables (Python Edition)</h1><hr>""")
 
 for header, header_value in os.environ.items():
-    print(f"<p>{header} = {header_value}</p>")
+    if header and header_value:
+        print(f"<p>{header} = {header_value}</p>")
+    else:
+        print(f"<p style='color:red'>Error: This environment variable {header} have no value.</p>")
 
 print("""</body>
 </html>""")
