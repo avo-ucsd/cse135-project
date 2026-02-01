@@ -16,8 +16,8 @@ print(f"""
 <h1>Session Page 1</h1>
 <p>Saved Name: {username}</p>
 
-<p><a href="python-session-2.py">Go to Session Page 2</a></p>
-<p><a href="python-destroy-session.py">Destroy Session</a></p>
+<p><a href="py-sessions-2.py">Go to Session Page 2</a></p>
+<p><a href="py-destroy-session.py">Destroy Session</a></p>
 </body>
 </html>
 """)

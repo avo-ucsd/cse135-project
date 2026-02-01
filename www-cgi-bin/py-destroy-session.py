@@ -10,7 +10,7 @@ print("""
 <h1>Session Destroyed</h1>
 <p>Your session data has been cleared.</p>
 
-<p><a href="python-cgi-form.py">Back to Form</a></p>
+<p><a href="py-cgi-form.py">Back to Form</a></p>
 </body>
 </html>
 """)

@@ -121,13 +121,13 @@ if existing_username:
        <strong>{existing_username}</strong></p>
     <p>Please destroy your current session before creating a new one.</p>
 
-    <form action="/cgi-bin/python-destroy-session.py" method="get">
+    <form action="/cgi-bin/py-destroy-session.py" method="get">
         <button type="submit">Destroy Session</button>
     </form>
     """)
 else:
     print("""
-    <form action="/cgi-bin/python-cgi-form.py" method="get">
+    <form action="/cgi-bin/py-cgi-form.py" method="get">
         <label for="username">Enter your name:</label><br/>
         <input type="text" id="username" name="username" required><br/><br/>
         <button type="submit">Create Session</button>
@@ -137,8 +137,8 @@ else:
 print("""
 <br/>
 <ul>
-    <li><a href="/cgi-bin/python-session-1.py">Session Page 1</a></li>
-    <li><a href="/cgi-bin/python-session-2.py">Session Page 2</a></li>
+    <li><a href="/cgi-bin/py-sessions-1.py">Session Page 1</a></li>
+    <li><a href="/cgi-bin/py-sessions-2.py">Session Page 2</a></li>
     <li><a href="/">Back to Team Ate home</a></li>
 </ul>
 </section>
