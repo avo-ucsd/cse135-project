@@ -99,11 +99,6 @@ if submitted_username and not existing_username:
 # Standard CGI headers
 print("Cache-Control: no-cache")
 print("Content-Type: text/html\n")
-
-# -----------------------------
-# HTML output
-# -----------------------------
-
 print("""<!DOCTYPE html>
 <html>
 <head>

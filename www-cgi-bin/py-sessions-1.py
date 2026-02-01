@@ -23,7 +23,7 @@ print(f"""
     <p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>
 """)
 
-if (username):
+if (username is not None and username != "null"):
     print(f"<p>Hello {username}, looking S3XY today.</p>")
 else:
     print("<p>You do <strong>not</strong> have a name yet. Womp Womp.</p>")

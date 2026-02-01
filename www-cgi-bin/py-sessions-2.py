@@ -23,7 +23,7 @@ print(f"""
     <p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>
 """)
 
-if (username):
+if (username is not None and username != "null"):
     print(f"<p>Wake up {username}, we got a city to burn. [insert 2077 BGM]</p>")
 else:
     print("""

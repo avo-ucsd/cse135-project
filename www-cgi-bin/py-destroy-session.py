@@ -35,7 +35,7 @@ if sessionId:
 
 
 #Expire the cookie by setting a date in the past
-print("Set-Cookie: CGISESSID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT\n")
+print("Set-Cookie: CGISESSID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT")
 print("Cache-Control: no-cache")
 print("Content-Type: text/html\n")
 
