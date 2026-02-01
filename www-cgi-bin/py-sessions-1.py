@@ -51,10 +51,11 @@ print(f"""
     <p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>
 """)
 
-if (username is not None):
-    print(f"<p>Hello {username}, looking S3XY today.</p>")
-else:
+if not username:
     print("<p>You do <strong>not</strong> have a name yet. Womp Womp.</p>")
+else:
+    print(f"<p>Hello {username}, looking S3XY today.</p>")
+
 
 print(f"""
     <ul>

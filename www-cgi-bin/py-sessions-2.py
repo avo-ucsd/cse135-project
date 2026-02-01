@@ -6,7 +6,7 @@ from http import cookies
 SESSION_DIR = "/tmp/python_sessions/"
 COOKIE_NAME = "CGISESSID"
 
-def get_session_id():
+def getSessionId():
     cookies = os.environ.get("HTTP_COOKIE")
     if not cookies:
         return ""
@@ -18,12 +18,12 @@ def get_session_id():
 
     return ""
 
-def get_username(session_id):
-    if not session_id:
+def getUsername(sessionId):
+    if not sessionId:
         return ""
 
     try:
-        with open(SESSION_DIR + session_id, "r") as f:
+        with open(SESSION_DIR + sessionId, "r") as f:
             return f.readline().strip()
     except FileNotFoundError:
         return ""
@@ -31,8 +31,8 @@ def get_username(session_id):
 # -----------------------------
 # Main logic
 # -----------------------------
-session_id = get_session_id()
-username = get_username(session_id)
+sessionId = getSessionId()
+username = getUsername(sessionId)
 
 print("Cache-Control: no-cache")
 print("Content-Type: text/html\n")
@@ -50,15 +50,16 @@ print(f"""
     <p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>
 """)
 
-if (username is not None):
-    print(f"<p>Wake up {username}, we got a city to burn. [insert 2077 BGM]</p>")
-else:
+if not username:
     print("""
-        <p>Welcome tarnished, come to the Land Between for the Elden Ring hmm?
-        Unfortunately for you, however, you are <strong>MAIDENLESS</strong>. <br>
-        Create a CGI Form, link down below, to proceed your journey.</p>
-        <img src="https://media1.tenor.com/m/3bQqZHTOsgcAAAAd/no-maidens-elden-ring.gif" width="10vw" alt="You got 0 maidens my dude">
-        """)
+    <p>Welcome tarnished, come to the Land Between for the Elden Ring hmm?
+    Unfortunately for you, however, you are <strong>MAIDENLESS</strong>. <br>
+    You are currently do <strong>NOT</strong> a name yet. Create a CGI Form, link down below, to proceed your journey.</p>
+    <img src="https://media1.tenor.com/m/3bQqZHTOsgcAAAAd/no-maidens-elden-ring.gif" width="10vw" alt="You got 0 maidens my dude">
+    """)
+else:
+    print(f"<p>Wake up {username}, we got a city to burn. [insert 2077 BGM]</p>")
+
     
 print(f"""
     <ul>
