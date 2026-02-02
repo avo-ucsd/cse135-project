@@ -2,7 +2,7 @@
 #py-hello-html-world.py
 
 import datetime
-import socket
+import os
 
 ###### Sending GET Response
 # Sending header 
@@ -17,26 +17,22 @@ print("""<!DOCTYPE html>
 <head>
 <body>
 <h1 align=center>Hello HTML World</h1><hr/>
-<p>Hello World! This page was changed by Ashley of Team Ate!</p>
+<p>Hello World! This page was changed by Vy and Ashley of Team Ate!</p>
 <figure>
-    <figcaption><b>My teammates:</b></figcaption>
+    <figcaption><b>Ashley to Vy:</b></figcaption>
     <blockquote>
-        "Why would you willingly want to program in C++?" 
+        "Brother, I'd be concerned if any CS student doesn't know how to Google how to do "Hello World" for a given language"
     </blockquote>
 </figure>
 <p>This page was generated with the Python programming language [insert joke about indentation here].</p>""")
 
 # Get the current date and time
 current_datetime = datetime.datetime.now()
-print("""<p>This program was generated at: %f </p>""" % (current_datetime))
+print(f"<p>This program was generated at: {current_datetime}</p>")
 
-def get_local_ip():
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    return ip_address
-client_ip = get_local_ip()
-if (client_ip):
-    print(f"<p>Your current IP address is: {client_ip}</p>%")
+clientIP = os.environ.get("REMOTE_ADDR")
+if (clientIP):
+    print(f"<p>Your current IP address is: {clientIP}</p>")
 else:
     print("<p>There was an error with finding your IP address. :(</p>")
 
