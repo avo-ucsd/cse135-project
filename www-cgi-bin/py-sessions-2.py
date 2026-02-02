@@ -41,13 +41,13 @@ print(f"""
 <!DOCTYPE html>
 <html>
 <head>
-<title>Python C++ Sessions</title>
+<title>Python Sessions</title>
 </head>
     
 <body>
-<h1 align=\"center\">C++ Sessions (Page 1)</h1><hr/>
+<h1 align=\"center\">Python Sessions (Page 1)</h1><hr/>
 <section style=\"margin: auto; padding: 1rem; width: 50vw\">
-    <p>Hello! This is sessions with C++. You are on <strong>page 1</strong>.</p>
+    <p>Hello! This is sessions with Python. You are on <strong>page 1</strong>.</p>
 """)
 
 if not username:
@@ -63,7 +63,7 @@ else:
     
 print(f"""
     <ul>
-        <li><a href=\"/cgi-bin/py-cgi-form.py\">C++ CGI Form</a></li>
+        <li><a href=\"/cgi-bin/py-cgi-form.py\">Python CGI Form</a></li>
         <li><a href=\"/cgi-bin/py-sessions-1.py\">Session Page 1</a></li>
         <li><a href=\"/\">Back to Team Ate home</a></li>
     </ul>
