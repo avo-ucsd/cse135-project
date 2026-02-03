@@ -8,8 +8,8 @@ $clientIP = $_SERVER['REMOTE_ADDR'] ?? "(null)";
 
 $response = [
     "title" => "Hello CGI World! (PHP)",
-    "message" => "Hello World! This page was changed by Ashley of Team Ate!",
-    "teammates_quote" => "Why would you willingly want to program in C++?",
+    "message" => "Hello World!",
+    "teammates_quote" => "Why would you willingly want to program in PHP?",
     "language" => "PHP",
     "generated_at" => $timestamp,
     "ip_address" => $clientIP
