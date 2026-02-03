@@ -62,7 +62,7 @@ print(f"""
         <li><a href=\"/cgi-bin/py-sessions-2.py\">Session Page 2</a></li>
         <li><a href=\"/\">Back to Team Ate home</a></li>
     </ul>
-    <form action=\"/cgi-bin/cpp-destroy-session.cgi\" method=\"get\">
+    <form action=\"/cgi-bin/py-destroy-session.cgi\" method=\"get\">
         <button type=\"submit\">Destroy Session</button>
     </form>
 </section>
