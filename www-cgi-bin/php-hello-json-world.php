@@ -1,4 +1,3 @@
-#!/usr/bin/php-cgi
 <?php
 header("Cache-Control: no-cache");
 header("Content-Type: application/json; charset=utf-8");
