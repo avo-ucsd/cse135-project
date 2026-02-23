@@ -33,6 +33,8 @@ jobs:
               - 'www/**'
             www_cgi:
               - 'www-cgi-bin/**'
+            test:
+              - 'test/**'
       
       - name: Deploy collector
         if: steps.changes.outputs.collector == 'true'
@@ -55,6 +57,13 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }}
         run: rsync -avz --delete www/ $SERVER_USER@$SERVER_IP:/var/www/teamate.site/public_html
       
+      - name: Deploy test
+        if: steps.changes.outputs.test == 'true'
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+        run: rsync -avz --delete test/ $SERVER_USER@$SERVER_IP:/var/www/test.teamate.site/public_html
+      
       - name: Compile C++ CGI scripts
         if: steps.changes.outputs.www_cgi == 'true'
         run: |
@@ -73,3 +82,19 @@ jobs:
         run: |
           rsync -avz --delete --exclude='*.cpp' www-cgi-bin/ $SERVER_USER@$SERVER_IP:/var/www/teamate.site/cgi-bin/
           ssh $SERVER_USER@$SERVER_IP 'chmod +x /var/www/teamate.site/cgi-bin/*.cgi /var/www/teamate.site/cgi-bin/*.pl /var/www/teamate.site/cgi-bin/*.py 2>/dev/null || true'
+```
+
+**Changes made:**
+
+1. Added `test: - 'test/**'` to the path filters
+2. Added a new "Deploy test" step that syncs `test/` folder to `/var/www/test.teamate.site/public_html`
+
+**Your repo structure should now be:**
+```
+repo/
+├── collector/
+├── reporting/
+├── www/
+├── www-cgi-bin/
+├── test/          ← new folder
+└── .github/workflows/deploy.yml
