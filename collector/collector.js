@@ -191,7 +191,7 @@
     };
   }
 
-  // Payload & Delivery
+  // Payload Delivery
   /**
    * Build the analytics payload and send it via sendBeacon.
    * Extends the Module 01 payload with session ID and technographics.
@@ -224,39 +224,240 @@
     window.dispatchEvent(new CustomEvent('collector:payload', { detail: payload }));
   }
 
+  // Web Vitals
+  /**
+   * Initialize PerformanceObservers for Core Web Vitals.
+   * LCP, CLS, and INP are collected continuously and included
+   * in the exit beacon when the page is hidden.
+   */
+  function initWebVitals() {
+    // Largest Contentful Paint (LCP)
+    try {
+      const lcpObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        if (entries.length) {
+          vitals.lcp = round(entries[entries.length - 1].startTime);
+        }
+      });
+      lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch (e) {
+      console.log('[collector-v6] LCP observer not supported');
+    }
+
+    // Cumulative Layout Shift (CLS)
+    try {
+      const clsObserver = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => {
+          if (!entry.hadRecentInput) {
+            vitals.cls = round(vitals.cls + entry.value);
+          }
+        });
+      });
+      clsObserver.observe({ type: 'layout-shift', buffered: true });
+    } catch (e) {
+      console.log('[collector-v6] CLS observer not supported');
+    }
+
+    // Interaction to Next Paint (INP)
+    try {
+      const inpObserver = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => {
+          const duration = entry.duration;
+          if (vitals.inp === null || duration > vitals.inp) {
+            vitals.inp = round(duration);
+          }
+        });
+      });
+      inpObserver.observe({ type: 'event', buffered: true, durationThreshold: 16 });
+    } catch (e) {
+      console.log('[collector-v6] INP observer not supported');
+    }
+  }
+
+  /**
+   * Return the current vitals snapshot.
+   */
+  function getWebVitals() {
+    return {
+      lcp: vitals.lcp,
+      cls: vitals.cls,
+      inp: vitals.inp
+    };
+  }
+
+  // Payload Delivery 
+  /**
+   * Send the payload to the analytics endpoint via sendBeacon,
+   * falling back to fetch with keepalive.
+   */
+  function send(payload) {
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(ENDPOINT, blob);
+      console.log('[collector-v6] Beacon sent');
+    } else {
+      fetch(ENDPOINT, {
+        method: 'POST',
+        body: blob,
+        keepalive: true
+      }).catch((err) => {
+        console.warn('[collector-v6] fetch fallback error:', err.message);
+      });
+    }
+
+    console.log('[collector-v6] payload:', payload);
+  }
+
+
+  // Error Tracking
+
+  /**
+   * Report an error with deduplication and rate limiting.
+   * Prevents beacon storms from repeated errors (e.g., in render loops).
+   */
+  function reportError(errorData) {
+    // Rate limit: max errors per page load
+    if (errorCount >= MAX_ERRORS) {
+      console.log(`[collector-v6] Error rate limit reached (${MAX_ERRORS}), ignoring:`, errorData.message);
+      return;
+    }
+
+    // Deduplicate by type + message + source + line
+    const key = `${errorData.type}:${errorData.message || ''}:${errorData.source || ''}:${errorData.line || ''}`;
+    if (reportedErrors.has(key)) {
+      console.log('[collector-v6] Duplicate error suppressed:', errorData.message);
+      return;
+    }
+    reportedErrors.add(key);
+    errorCount++;
+
+    console.log(`[collector-v6] Error #${errorCount}:`, errorData.type, '-', errorData.message);
+
+    // Send error beacon
+    const payload = {
+      type: 'error',
+      error: errorData,
+      timestamp: new Date().toISOString(),
+      url: window.location.href,
+      session: getSessionId()
+    };
+
+    send(payload);
+
+    // Dispatch custom event so test pages can display the error
+    window.dispatchEvent(new CustomEvent('collector:error', { detail: { errorData: errorData, count: errorCount } }));
+  }
+
+  /**
+   * Initialize error listeners for JS errors, resource load failures,
+   * and unhandled promise rejections.
+   */
+  function initErrorTracking() {
+    // JS runtime errors AND resource load failures (capture phase for resources)
+    window.addEventListener('error', (event) => {
+      if (event instanceof ErrorEvent) {
+        // JavaScript runtime error
+        reportError({
+          type: 'js-error',
+          message: event.message,
+          source: event.filename,
+          line: event.lineno,
+          column: event.colno,
+          stack: event.error ? event.error.stack : '',
+          url: window.location.href
+        });
+      } else {
+        // Resource load failure (IMG, SCRIPT, LINK)
+        const target = event.target;
+        if (target && (target.tagName === 'IMG' || target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
+          reportError({
+            type: 'resource-error',
+            tagName: target.tagName,
+            src: target.src || target.href || '',
+            url: window.location.href
+          });
+        }
+      }
+    }, true); // capture phase required for resource errors
+
+    // Unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason;
+      reportError({
+        type: 'promise-rejection',
+        message: reason instanceof Error ? reason.message : String(reason),
+        stack: reason instanceof Error ? reason.stack : '',
+        url: window.location.href
+      });
+    });
+
+    console.log('[collector-v6] Error tracking initialized');
+  }
+
+    // â”€â”€ Collect & Send â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  /**
+   * Build the full analytics payload and send it.
+   */
+  function collect() {
+    const payload = {
+      url: window.location.href,
+      title: document.title,
+      referrer: document.referrer,
+      timestamp: new Date().toISOString(),
+      type: 'pageview',
+      session: getSessionId(),
+      technographics: getTechnographics(),
+      timing: getNavigationTiming(),
+      resources: getResourceSummary(),
+      vitals: getWebVitals(),
+      errorCount: errorCount
+    };
+
+    send(payload);
+
+    // Dispatch a custom event so test pages can read the payload
+    window.dispatchEvent(new CustomEvent('collector:payload', { detail: payload }));
+  }
+
+
   // Triggers
-  // Collect after the page is fully loaded
+  // Initialize error tracking immediately (before any errors can fire)
+  initErrorTracking();
+  
+  // Initialize Web Vitals observers
+  initWebVitals();
+
+  // Collect pageview after the page is fully loaded
   window.addEventListener('load', () => {
-    // Small delay to ensure loadEventEnd is populated
     setTimeout(() => {
-      console.log('[collector-v4] Page loaded â€” collecting performance timing');
+      console.log('[collector-v6] Page loaded â€” collecting data');
       collect();
-      // Add to beacon payload...
     }, 0);
-  });
-
-
-  // Collect on page load
-  window.addEventListener('load', () => {
-    console.log('[collector-v2] Page loaded” collecting technographics');
-    collect();
   });
 
   // Collect again when the page is being hidden (tab close, navigation away)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      console.log('[collector-v2] Page hidden” sending exit beacon');
+      console.log('[collector-v6] Page hidden â€” sending exit beacon');
       collect();
     }
   });
 
-  // Expose functions for the test page
+  // Expose for test page
+
   window.__collector = {
+    getNavigationTiming: getNavigationTiming,
+    getResourceSummary: getResourceSummary,
     getTechnographics: getTechnographics,
+    getWebVitals: getWebVitals,
     getSessionId: getSessionId,
     getNetworkInfo: getNetworkInfo,
+    reportError: reportError,
     collect: collect,
-    getResourceSummary: getResourceSummary
+    getErrorCount: () => errorCount,
+    getReportedErrors: () => Array.from(reportedErrors)
   };
 
 })();
