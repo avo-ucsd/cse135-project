@@ -16,6 +16,18 @@
 
   // Configuration
   const ENDPOINT = 'https://collector.teamate.site';
+  const MAX_ERRORS = 10;
+
+  // Error Tracking State
+  const reportedErrors = new Set();
+  let errorCount = 0;
+
+  // Web Vitals State 
+  const vitals = {
+    lcp: null,
+    cls: 0,
+    inp: null
+  };
 
   // Session Identity
 
@@ -440,7 +452,7 @@
   // Collect again when the page is being hidden (tab close, navigation away)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      console.log('[collector-v6] Page hidden â€” sending exit beacon');
+      console.log('[collector-v6] Page hidden sending exit beacon');
       collect();
     }
   });
