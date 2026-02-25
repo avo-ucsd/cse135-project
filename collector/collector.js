@@ -67,26 +67,52 @@
       language: navigator.language,
       cookiesEnabled: navigator.cookieEnabled,
 
+      // JS, images, CSS
+      javascriptEnabled: true, // If this runs, JS is enabled arbitrarily
+      imagesEnabled: (() => {  // Create a 1x1 gif and check to see if it's successfully created or not.
+        const img = new Image();
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        return img.complete || img.width > 0;
+      })(),
+      cssEnabled: (() => { // Injects a div and checks if getComputedStyle reflects it. If CSS is disabled or blocked, it would return False.
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        document.body.appendChild(el);
+        const computed = window.getComputedStyle(el).position;
+        document.body.removeChild(el);
+        return computed === 'absolute';
+      })(),
+
       // Viewport (current browser window)
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
+
+      // Window dimension
+      windowWidth: window.outerWidth,
+      windowHeight: window.outerHeight,
 
       // Screen (physical display)
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       pixelRatio: window.devicePixelRatio,
 
+      /* NOT INTERESTED
       // Hardware
       cores: navigator.hardwareConcurrency || 0,
       memory: navigator.deviceMemory || 0,
+      */
 
       // Network (feature-detected)
       network: getNetworkInfo(),
 
+      /*
       // Preferences
       colorScheme: window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark' : 'light',
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      */
+
+      //
     };
   }
 
