@@ -29,6 +29,103 @@
     inp: null
   };
 
+  // Mouse Activity State
+  const MAX_MOUSE_EVENTS = 200;
+  const MAX_KEYBOARD_EVENTS = 300;
+  const MAX_IDLE_BREAKS = 200;
+  const IDLE_THRESHOLD_MS = 2000;
+  const mouse = {
+    cursor: { x: null, y: null, ts: null },
+    moves: [],
+    clicks: [],
+    scrolls: [],
+    totals: {
+      moves: 0,
+      clicks: 0,
+      scrolls: 0
+    }
+  };
+
+  const keyboard = {
+    downs: [],
+    ups: [],
+    lastKey: null,
+    totals: {
+      keydown: 0,
+      keyup: 0
+    }
+  };
+
+  const pageLifecycle = {
+    enteredAtMs: Date.now(),
+    enteredAt: new Date().toISOString(),
+    leftAtMs: null,
+    leftAt: null,
+    leftReason: null,
+    entryUrl: window.location.href,
+    entryPath: window.location.pathname,
+    entryTitle: document.title
+  };
+
+  const idle = {
+    lastActivityTs: pageLifecycle.enteredAtMs,
+    breaks: [],
+    totals: {
+      count: 0,
+      totalDurationMs: 0,
+      longestDurationMs: 0
+    }
+  };
+
+  let hasSentLeaveBeacon = false;
+
+  function pushLimited(list, eventData, maxSize = MAX_MOUSE_EVENTS) {
+    list.push(eventData);
+    if (list.length > maxSize) {
+      list.shift();
+    }
+  }
+
+  function recordActivity(source) {
+    const now = Date.now();
+    const gapMs = now - idle.lastActivityTs;
+
+    if (gapMs >= IDLE_THRESHOLD_MS) {
+      const idleBreak = {
+        source: source,
+        startedAtMs: idle.lastActivityTs,
+        startedAt: new Date(idle.lastActivityTs).toISOString(),
+        endedAtMs: now,
+        endedAt: new Date(now).toISOString(),
+        durationMs: gapMs,
+        pageUrl: window.location.href
+      };
+
+      pushLimited(idle.breaks, idleBreak, MAX_IDLE_BREAKS);
+      idle.totals.count++;
+      idle.totals.totalDurationMs += gapMs;
+      if (gapMs > idle.totals.longestDurationMs) {
+        idle.totals.longestDurationMs = gapMs;
+      }
+    }
+
+    idle.lastActivityTs = now;
+  }
+
+  function markPageLeft(reason) {
+    const now = Date.now();
+    pageLifecycle.leftAtMs = now;
+    pageLifecycle.leftAt = new Date(now).toISOString();
+    pageLifecycle.leftReason = reason;
+  }
+
+  function sendLeaveBeacon(reason) {
+    if (hasSentLeaveBeacon) return;
+    hasSentLeaveBeacon = true;
+    markPageLeft(reason);
+    collect();
+  }
+
   // Session Identity
 
   /**
@@ -203,39 +300,6 @@
     };
   }
 
-  // Payload Delivery
-  /**
-   * Build the analytics payload and send it via sendBeacon.
-   * Extends the Module 01 payload with session ID and technographics.
-   */
-  function collect() {
-    const payload = {
-      url: window.location.href,
-      title: document.title,
-      referrer: document.referrer,
-      timestamp: new Date().toISOString(),
-      type: 'pageview',
-      session: getSessionId(),
-      technographics: getTechnographics(),
-      timing: getNavigationTiming(),
-      resources: getResourceSummary()
-    };
-
-    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(ENDPOINT, blob);
-      console.log('[collector-v2] Beacon sent');
-    } else {
-      console.warn('[collector-v2] sendBeacon not available');
-    }
-
-    console.log('[collector-v2] payload:', payload);
-
-    // Dispatch a custom event so test pages can read the payload
-    window.dispatchEvent(new CustomEvent('collector:payload', { detail: payload }));
-  }
-
   // Web Vitals
   /**
    * Initialize PerformanceObservers for Core Web Vitals.
@@ -294,6 +358,150 @@
       lcp: vitals.lcp,
       cls: vitals.cls,
       inp: vitals.inp
+    };
+  }
+
+  // Mouse Tracking 
+
+  /**
+   * Initialize listeners for mouse movement, clicks, and scrolling.
+   * Stores latest cursor position and bounded event buffers.
+   */
+  function initMouseTracking() {
+    document.addEventListener('mousemove', (event) => {
+      recordActivity('mousemove');
+      mouse.totals.moves++;
+      const moveEvent = {
+        x: event.clientX,
+        y: event.clientY,
+        ts: Date.now()
+      };
+      mouse.cursor = moveEvent;
+      pushLimited(mouse.moves, moveEvent);
+    }, { passive: true });
+
+    document.addEventListener('click', (event) => {
+      recordActivity('click');
+      mouse.totals.clicks++;
+      pushLimited(mouse.clicks, {
+        x: event.clientX,
+        y: event.clientY,
+        button: event.button,
+        buttonName: event.button === 0 ? 'left' : event.button === 1 ? 'middle' : event.button === 2 ? 'right' : 'other',
+        ts: Date.now()
+      });
+    }, { passive: true });
+
+    window.addEventListener('scroll', () => {
+      recordActivity('scroll');
+      mouse.totals.scrolls++;
+      pushLimited(mouse.scrolls, {
+        x: window.scrollX,
+        y: window.scrollY,
+        ts: Date.now()
+      });
+    }, { passive: true });
+
+    console.log('[collector-v6] Mouse tracking initialized');
+  }
+
+  /**
+   * Return a snapshot of tracked mouse activity.
+   */
+  function getMouseActivity() {
+    return {
+      cursor: mouse.cursor,
+      moves: mouse.moves,
+      clicks: mouse.clicks,
+      scrolls: mouse.scrolls,
+      totals: mouse.totals
+    };
+  }
+
+  /**
+   * Initialize listeners for keyboard keydown/keyup activity.
+   */
+  function initKeyboardTracking() {
+    document.addEventListener('keydown', (event) => {
+      recordActivity('keydown');
+      keyboard.totals.keydown++;
+      const keyEvent = {
+        type: 'keydown',
+        key: event.key,
+        code: event.code,
+        repeat: event.repeat,
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        ts: Date.now()
+      };
+      keyboard.lastKey = keyEvent;
+      pushLimited(keyboard.downs, keyEvent, MAX_KEYBOARD_EVENTS);
+    }, { passive: true });
+
+    document.addEventListener('keyup', (event) => {
+      recordActivity('keyup');
+      keyboard.totals.keyup++;
+      const keyEvent = {
+        type: 'keyup',
+        key: event.key,
+        code: event.code,
+        repeat: event.repeat,
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        ts: Date.now()
+      };
+      keyboard.lastKey = keyEvent;
+      pushLimited(keyboard.ups, keyEvent, MAX_KEYBOARD_EVENTS);
+    }, { passive: true });
+
+    console.log('[collector-v6] Keyboard tracking initialized');
+  }
+
+  /**
+   * Return a snapshot of tracked keyboard activity.
+   */
+  function getKeyboardActivity() {
+    return {
+      downs: keyboard.downs,
+      ups: keyboard.ups,
+      lastKey: keyboard.lastKey,
+      totals: keyboard.totals
+    };
+  }
+
+  /**
+   * Return a snapshot of idle periods detected from user activity gaps.
+   */
+  function getIdleActivity() {
+    return {
+      thresholdMs: IDLE_THRESHOLD_MS,
+      lastActivityAtMs: idle.lastActivityTs,
+      lastActivityAt: new Date(idle.lastActivityTs).toISOString(),
+      breaks: idle.breaks,
+      totals: idle.totals
+    };
+  }
+
+  /**
+   * Return page entry/exit lifecycle information.
+   */
+  function getPageLifecycle() {
+    return {
+      enteredAtMs: pageLifecycle.enteredAtMs,
+      enteredAt: pageLifecycle.enteredAt,
+      leftAtMs: pageLifecycle.leftAtMs,
+      leftAt: pageLifecycle.leftAt,
+      leftReason: pageLifecycle.leftReason,
+      pageUrl: window.location.href,
+      pagePath: window.location.pathname,
+      pageTitle: document.title,
+      entryUrl: pageLifecycle.entryUrl,
+      entryPath: pageLifecycle.entryPath,
+      entryTitle: pageLifecycle.entryTitle
     };
   }
 
@@ -407,7 +615,7 @@
     console.log('[collector-v6] Error tracking initialized');
   }
 
-    // â”€â”€ Collect & Send â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Collect and Send
 
   /**
    * Build the full analytics payload and send it.
@@ -424,6 +632,10 @@
       timing: getNavigationTiming(),
       resources: getResourceSummary(),
       vitals: getWebVitals(),
+      mouse: getMouseActivity(),
+      keyboard: getKeyboardActivity(),
+      idle: getIdleActivity(),
+      pageLifecycle: getPageLifecycle(),
       errorCount: errorCount
     };
 
@@ -441,6 +653,12 @@
   // Initialize Web Vitals observers
   initWebVitals();
 
+  // Initialize Mouse activity tracking
+  initMouseTracking();
+
+  // Initialize Keyboard activity tracking
+  initKeyboardTracking();
+
   // Collect pageview after the page is fully loaded
   window.addEventListener('load', () => {
     setTimeout(() => {
@@ -453,8 +671,12 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       console.log('[collector-v6] Page hidden sending exit beacon');
-      collect();
+      sendLeaveBeacon('visibility-hidden');
     }
+  });
+
+  window.addEventListener('pagehide', () => {
+    sendLeaveBeacon('pagehide');
   });
 
   // Expose for test page
@@ -464,6 +686,10 @@
     getResourceSummary: getResourceSummary,
     getTechnographics: getTechnographics,
     getWebVitals: getWebVitals,
+    getMouseActivity: getMouseActivity,
+    getKeyboardActivity: getKeyboardActivity,
+    getIdleActivity: getIdleActivity,
+    getPageLifecycle: getPageLifecycle,
     getSessionId: getSessionId,
     getNetworkInfo: getNetworkInfo,
     reportError: reportError,
