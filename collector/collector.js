@@ -662,7 +662,7 @@
   // Collect pageview after the page is fully loaded
   window.addEventListener('load', () => {
     setTimeout(() => {
-      console.log('[collector-v6] Page loaded â€” collecting data');
+      console.log('[collector-v6] Page loaded collecting data');
       collect();
     }, 0);
   });
