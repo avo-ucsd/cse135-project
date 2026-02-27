@@ -1,5 +1,5 @@
 /**
- * collector-v2.js â€” Analytics Collector with Technographics
+ * collector-v2.js Analytics Collector with Technographics
  * CSE 135 - Module 02: Technographics
  *
  * Extends the Module 01 "hello beacon" collector with:
@@ -167,7 +167,7 @@
   /**
    * Collect a complete technographic profile of the user's environment.
    * All properties are feature-detected with safe fallbacks.
-   * Returns a plain object â€” no side effects, no async.
+   * Returns a plain object no side effects, no async.
    */
   function getTechnographics() {
     return {
