@@ -28,7 +28,7 @@
 //     'https://teamate.site',
 //     'https://www.teamate.site',
 //     'https://test.teamate.site',
-//     'https://reporting.teamate.site',
+//     'https://report.teamate.site',
 // ];
 
 // $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -51,7 +51,7 @@ define('DB_HOST', 'localhost');
 define('DB_PORT', '3306');
 define('DB_NAME', 'collector_db');
 define('DB_USER', 'collector_user');
-define('DB_PASS', 'JoeCollectsSalmonBurrito135');
+define('DB_PASS', 'JoeCollectsSalmonBurrito135'); 
 
 // ── Connect ───────────────────────────────────────────────────────────────────
 try {
@@ -127,7 +127,7 @@ switch ($resource) {
                     $limit = min((int)($_GET['limit'] ?? 100), 1000);
                     $offset = (int)($_GET['offset'] ?? 0);
                     $stmt = $pdo->prepare("
-                        SELECT id, event_type, url, title, referrer,
+                        SELECT id, received_at, event_type, url, title, referrer,
                                client_timestamp, session_id, error_count,
                                user_agent, language, viewport_width, viewport_height,
                                screen_width, screen_height, pixel_ratio,
@@ -137,8 +137,7 @@ switch ($resource) {
                                page_entered_at, page_left_at, page_left_reason,
                                mouse_total_moves, mouse_total_clicks, mouse_total_scrolls,
                                keyboard_total_keydown, keyboard_total_keyup,
-                               idle_total_count, idle_total_duration_ms,
-                               created_at
+                               idle_total_count, idle_total_duration_ms
                         FROM pageviews
                         ORDER BY id DESC
                         LIMIT :limit OFFSET :offset
