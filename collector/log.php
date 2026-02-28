@@ -16,16 +16,16 @@
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // sendBeacon is cross-origin (teamate.site → collector.teamate.site),
 // so we must explicitly allow our own domains.
-$allowed_origins = [
-    'https://teamate.site',
-    'https://www.teamate.site',
-    'https://test.teamate.site',
-];
+// $allowed_origins = [
+//     'https://teamate.site',
+//     'https://www.teamate.site',
+//     'https://test.teamate.site',
+// ];
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, $allowed_origins, true)) {
-    header("Access-Control-Allow-Origin: $origin");
-}
+// $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+// if (in_array($origin, $allowed_origins, true)) {
+//     header("Access-Control-Allow-Origin: $origin");
+// }
 // header('Access-Control-Allow-Methods: POST, OPTIONS');
 // header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
