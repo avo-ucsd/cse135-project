@@ -15,7 +15,7 @@
   'use strict';
 
   // Configuration
-  const ENDPOINT = 'https://collector.teamate.site';
+  const ENDPOINT = 'https://collector.teamate.site/log';
   const MAX_ERRORS = 10;
 
   // Error Tracking State
