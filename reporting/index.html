@@ -1,19 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSE 135 HW Lives!</title>
+  <title>Team Ate Analytics</title>
+  <link rel="stylesheet" href="analytics.css">
 </head>
-
 <body>
-  <h1>CSE 135 HW1 Lives!</h1>
-  <h2>reporting.teamate.site</h2>
-  <script>
-    document.write(`Live @ ${new Date()}`);
-  </script>
 
+  <header role="banner">
+    <nav aria-label="Primary navigation">
+      <a href="#" class="wordmark">Team <strong>Ate</strong></a>
+      <ul role="list">
+        <li><a href="analytics.html" aria-current="page">Dashboard</a></li>
+        <li><a href="traffic.html">Traffic</a></li>
+        <li><a href="reports.html">Reports</a></li>
+      </ul>
+      <!-- <form method="post" action="/logout" class="logout-form">
+        <button type="submit" class="btn-logout">Log out</button>
+      </form> -->
+    </nav>
+  </header>
+
+  <main>
+    <section aria-labelledby="page-title" class="page-header">
+      <hgroup>
+        <p class="eyebrow">Overview</p>
+        <h1 id="page-title">Dashboard</h1>
+      </hgroup>
+    </section>
+
+    <section aria-label="Key metrics" class="kpi-strip">
+      <article class="kpi-card">
+        <h2>Page Views</h2>
+        <p class="kpi-value">84,201</p>
+        <p class="kpi-delta positive">&#9650; 12.4%</p>
+      </article>
+      <article class="kpi-card">
+        <h2>Unique Visitors</h2>
+        <p class="kpi-value">31,540</p>
+        <p class="kpi-delta positive">&#9650; 7.1%</p>
+      </article>
+      <article class="kpi-card">
+        <h2>Bounce Rate</h2>
+        <p class="kpi-value">42.3%</p>
+        <p class="kpi-delta negative">&#9660; 3.2%</p>
+      </article>
+      <article class="kpi-card">
+        <h2>Avg. Session</h2>
+        <p class="kpi-value">2m 47s</p>
+        <p class="kpi-delta positive">&#9650; 0.4%</p>
+      </article>
+    </section>
+
+    <section aria-labelledby="chart-heading" class="chart-section">
+      <h2 id="chart-heading">Traffic Over Time</h2>
+      <figure>
+        <canvas id="trafficChart" width="900" height="280" aria-label="Line chart of daily page views over 30 days" role="img"></canvas>
+        <figcaption>Daily page views, Feb 2 – Mar 4, 2026</figcaption>
+      </figure>
+    </section>
+
+    <section aria-labelledby="table-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="table-heading">Top Pages</h2>
+        <a href="reports.html" class="link-more">Full report &rarr;</a>
+      </header>
+      <figure>
+        <table>
+          <caption class="sr-only">Top pages by views in the last 30 days</caption>
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Page</th>
+              <th scope="col">Views</th>
+              <th scope="col">Unique</th>
+              <th scope="col">Avg. Time</th>
+              <th scope="col">Bounce</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><a href="#">/</a></td>
+              <td>18,402</td>
+              <td>12,105</td>
+              <td>1m 52s</td>
+              <td>38.1%</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><a href="#">/products</a></td>
+              <td>11,930</td>
+              <td>8,741</td>
+              <td>3m 14s</td>
+              <td>29.6%</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><a href="#">/blog</a></td>
+              <td>9,812</td>
+              <td>7,204</td>
+              <td>4m 01s</td>
+              <td>22.3%</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td><a href="#">/about</a></td>
+              <td>5,340</td>
+              <td>4,100</td>
+              <td>2m 08s</td>
+              <td>51.7%</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td><a href="#">/contact</a></td>
+              <td>3,207</td>
+              <td>2,988</td>
+              <td>1m 34s</td>
+              <td>60.2%</td>
+            </tr>
+          </tbody>
+        </table>
+      </figure>
+    </section>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        fetch("https://collector.teamate.site/api/sessions/")
+          .then(res => res.json())
+          .then(data => console.log(data))
+          .catch(err => console.error("Error:", err));
+      })
+    </script>
+  </main>
+
+  <footer role="contentinfo">
+    <p>Connected to <abbr title="DigitalOcean Droplet">DO</abbr> / Apache / MySQL; Made with love by Team Ate (and Claude AI)</p>
+  </footer>
 </body>
-
 </html>
