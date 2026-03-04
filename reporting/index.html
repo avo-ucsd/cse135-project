@@ -126,7 +126,7 @@
     </section>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        fetch("https://collector.teamate.site/api/sessions/")
+        fetch("https://collector.teamate.site/api/pageviews/")
           .then(res => res.json())
           .then(data => console.log(data))
           .catch(err => console.error("Error:", err));
