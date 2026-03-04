@@ -1,0 +1,6 @@
+Options -Indexes
+
+RewriteEngine On
+
+# Route /log (with or without trailing slash) to log.php
+RewriteRule ^log/?$ log.php [L,QSA]

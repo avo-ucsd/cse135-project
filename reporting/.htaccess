@@ -1,0 +1,12 @@
+# Route all /api/* requests through api.php
+# Place this in the document root of your reporting vhost
+
+RewriteEngine On
+
+# Allow direct file access (css, js, images, etc.)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Route /api/* to api.php, preserving the path
+RewriteRule ^api(/.*)?$ api.php [L,QSA]
