@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raw Data — Team Ate Analytics</title>
+  <link rel="stylesheet" href="analytics.css">
+  <style>
+    /* ── Raw-data page overrides ─────────────────────────────── */
+    .raw-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .raw-controls label {
+      color: var(--text-muted);
+      font-size: .85rem;
+    }
+
+    .raw-controls select,
+    .raw-controls input[type="number"] {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: .3rem .6rem;
+      font-size: .85rem;
+    }
+
+    .raw-controls .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: .35rem .85rem;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+
+    .raw-controls .btn:hover { opacity: .85; }
+    .raw-controls .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .pagination-info {
+      margin-left: auto;
+      color: var(--text-muted);
+      font-size: .82rem;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+
+    table.raw-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+
+    table.raw-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    table.raw-table th {
+      background: var(--surface-alt);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: .55rem .75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    table.raw-table td {
+      padding: .45rem .75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    table.raw-table tr:last-child td { border-bottom: none; }
+
+    table.raw-table tbody tr:hover td {
+      background: var(--surface-alt);
+    }
+
+    /* Highlight columns with null / zero values */
+    td.null-val { color: var(--text-muted); font-style: italic; }
+    td.error-val { color: var(--negative); }
+    td.good-val  { color: var(--positive); }
+
+    #status-msg {
+      color: var(--text-muted);
+      font-size: .88rem;
+      padding: 2rem 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header role="banner">
+    <nav aria-label="Primary navigation">
+      <a href="index.html" class="wordmark">Team <strong>Ate</strong></a>
+      <ul role="list">
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="raw.html" aria-current="page">Raw Data</a></li>
+      </ul>
+      <form method="post" action="/logout" class="logout-form">
+        <button type="submit" class="btn-logout">Log out</button>
+      </form>
+    </nav>
+  </header>
+
+  <main>
+    <section aria-labelledby="page-title" class="page-header">
+      <hgroup>
+        <p class="eyebrow">Database</p>
+        <h1 id="page-title">Raw Pageview Data</h1>
+      </hgroup>
+    </section>
+
+    <section aria-labelledby="raw-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="raw-heading">pageviews table</h2>
+      </header>
+
+      <div class="raw-controls">
+        <label for="limit-select">Rows per page</label>
+        <select id="limit-select">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="250">250</option>
+        </select>
+
+        <button class="btn" id="btn-prev" disabled>&laquo; Prev</button>
+        <button class="btn" id="btn-next">Next &raquo;</button>
+
+        <span class="pagination-info" id="pagination-info"></span>
+      </div>
+
+      <p id="status-msg">Loading…</p>
+
+      <div class="table-scroll" id="table-wrap" hidden>
+        <table class="raw-table" aria-label="Raw pageview records from the database">
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Received At</th>
+              <th scope="col">Event</th>
+              <th scope="col">URL</th>
+              <th scope="col">Title</th>
+              <th scope="col">Session ID</th>
+              <th scope="col">Errors</th>
+              <th scope="col">Viewport</th>
+              <th scope="col">Network</th>
+              <th scope="col">TTFB (ms)</th>
+              <th scope="col">Load (ms)</th>
+              <th scope="col">LCP (ms)</th>
+              <th scope="col">CLS</th>
+              <th scope="col">INP (ms)</th>
+              <th scope="col">Entered At</th>
+              <th scope="col">Left At</th>
+              <th scope="col">Left Reason</th>
+              <th scope="col">Clicks</th>
+              <th scope="col">Scrolls</th>
+              <th scope="col">Keydowns</th>
+            </tr>
+          </thead>
+          <tbody id="raw-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer role="contentinfo">
+    <p>Connected to <abbr title="DigitalOcean Droplet">DO</abbr> / Apache / MySQL; Made with love by Team Ate (and Claude AI)</p>
+  </footer>
+
+  <script type="module">
+    'use strict';
+
+    const BASE     = '/api';
+    const tbody    = document.getElementById('raw-tbody');
+    const wrap     = document.getElementById('table-wrap');
+    const statusEl = document.getElementById('status-msg');
+    const infoEl   = document.getElementById('pagination-info');
+    const btnPrev  = document.getElementById('btn-prev');
+    const btnNext  = document.getElementById('btn-next');
+    const limitSel = document.getElementById('limit-select');
+
+    let offset = 0;
+    let total  = 0;
+
+    // ── Helpers ───────────────────────────────────────────────
+
+    /** Escape a value for safe insertion as text content. */
+    function esc(v) {
+      if (v === null || v === undefined || v === '') return null;
+      return String(v);
+    }
+
+    function cell(v, cls = '') {
+      const td = document.createElement('td');
+      if (v === null || v === undefined || v === '') {
+        td.textContent = '—';
+        td.className = 'null-val';
+      } else {
+        td.textContent = String(v);
+        if (cls) td.className = cls;
+      }
+      return td;
+    }
+
+    function fmtDatetime(iso) {
+      if (!iso) return null;
+      // Show as compact local datetime: YYYY-MM-DD HH:MM:SS
+      try {
+        const d = new Date(iso);
+        return d.toISOString().replace('T', ' ').slice(0, 19);
+      } catch {
+        return iso;
+      }
+    }
+
+    // ── Render one page of rows ───────────────────────────────
+
+    function renderRows(rows) {
+      tbody.innerHTML = '';
+
+      if (rows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 20;
+        td.textContent = 'No records found.';
+        td.style.textAlign = 'center';
+        td.className = 'null-val';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+
+        tr.appendChild(cell(r.id));
+        tr.appendChild(cell(fmtDatetime(r.received_at)));
+        tr.appendChild(cell(r.event_type));
+
+        // URL — truncate long paths
+        const urlTd = document.createElement('td');
+        urlTd.style.maxWidth = '200px';
+        try {
+          const u = new URL(r.url ?? '');
+          urlTd.textContent = u.pathname + (u.search ? u.search : '');
+          urlTd.title = r.url;
+        } catch {
+          urlTd.textContent = r.url ?? '—';
+          if (!r.url) urlTd.className = 'null-val';
+        }
+        tr.appendChild(urlTd);
+
+        tr.appendChild(cell(r.title));
+        tr.appendChild(cell(r.session_id));
+
+        // Error count — highlight non-zero
+        const errCount = Number(r.error_count ?? 0);
+        tr.appendChild(cell(errCount, errCount > 0 ? 'error-val' : ''));
+
+        // Viewport
+        const vpTd = document.createElement('td');
+        if (r.viewport_width && r.viewport_height) {
+          vpTd.textContent = `${r.viewport_width}×${r.viewport_height}`;
+        } else {
+          vpTd.textContent = '—';
+          vpTd.className = 'null-val';
+        }
+        tr.appendChild(vpTd);
+
+        tr.appendChild(cell(r.network_effective_type));
+        tr.appendChild(cell(r.timing_ttfb !== null ? Number(r.timing_ttfb).toFixed(0) : null));
+        tr.appendChild(cell(r.timing_load_event !== null ? Number(r.timing_load_event).toFixed(0) : null));
+        tr.appendChild(cell(r.vital_lcp !== null ? Number(r.vital_lcp).toFixed(0) : null));
+        tr.appendChild(cell(r.vital_cls !== null ? Number(r.vital_cls).toFixed(3) : null));
+        tr.appendChild(cell(r.vital_inp !== null ? Number(r.vital_inp).toFixed(0) : null));
+        tr.appendChild(cell(fmtDatetime(r.page_entered_at)));
+        tr.appendChild(cell(fmtDatetime(r.page_left_at)));
+        tr.appendChild(cell(r.page_left_reason));
+        tr.appendChild(cell(r.mouse_total_clicks));
+        tr.appendChild(cell(r.mouse_total_scrolls));
+        tr.appendChild(cell(r.keyboard_total_keydown));
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ── Fetch & update ────────────────────────────────────────
+
+    async function load() {
+      const limit = Number(limitSel.value);
+      btnPrev.disabled = true;
+      btnNext.disabled = true;
+      statusEl.textContent = 'Loading…';
+      wrap.hidden = true;
+
+      try {
+        const params = new URLSearchParams({ limit, offset });
+        const res = await fetch(`${BASE}/pageviews?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        total = Number(json.total ?? 0);
+        renderRows(json.data ?? []);
+
+        const pageStart = offset + 1;
+        const pageEnd   = Math.min(offset + limit, total);
+        infoEl.textContent = total > 0
+          ? `Showing ${pageStart}–${pageEnd} of ${total.toLocaleString()} records`
+          : 'No records';
+
+        statusEl.textContent = '';
+        wrap.hidden = false;
+
+        btnPrev.disabled = offset === 0;
+        btnNext.disabled = offset + limit >= total;
+      } catch (err) {
+        statusEl.textContent = `Error loading data: ${err.message}`;
+        wrap.hidden = true;
+      }
+    }
+
+    // ── Event listeners ───────────────────────────────────────
+
+    btnPrev.addEventListener('click', () => {
+      offset = Math.max(0, offset - Number(limitSel.value));
+      load();
+    });
+
+    btnNext.addEventListener('click', () => {
+      offset += Number(limitSel.value);
+      load();
+    });
+
+    limitSel.addEventListener('change', () => {
+      offset = 0;
+      load();
+    });
+
+    // ── Initial load ──────────────────────────────────────────
+    load();
+  </script>
+</body>
+</html>
