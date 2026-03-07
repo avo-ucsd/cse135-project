@@ -106,6 +106,52 @@
       padding: 2rem 0;
       text-align: center;
     }
+
+    /* ── Column picker ───────────────────────────────────────── */
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: .35rem .85rem;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+    .btn-outline:hover { background: var(--accent-dim); }
+
+    .col-picker-wrap { position: relative; }
+
+    .col-picker-panel {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 100;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: .75rem 1rem;
+      min-width: 200px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .4rem .75rem;
+      box-shadow: 0 8px 24px rgba(0 0 0 / .4);
+    }
+
+    .col-picker-panel label {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .8rem;
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .col-picker-panel input[type="checkbox"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -148,6 +194,11 @@
         <button class="btn" id="btn-prev" disabled>&laquo; Prev</button>
         <button class="btn" id="btn-next">Next &raquo;</button>
 
+        <div class="col-picker-wrap">
+          <button class="btn-outline" id="btn-columns" aria-haspopup="true" aria-expanded="false">Columns &#9660;</button>
+          <div id="col-picker-panel" class="col-picker-panel" hidden></div>
+        </div>
+
         <span class="pagination-info" id="pagination-info"></span>
       </div>
 
@@ -157,26 +208,26 @@
         <table class="raw-table" aria-label="Raw pageview records from the database">
           <thead>
             <tr>
-              <th scope="col">ID</th>
-              <th scope="col">Received At</th>
-              <th scope="col">Event</th>
-              <th scope="col">URL</th>
-              <th scope="col">Title</th>
-              <th scope="col">Session ID</th>
-              <th scope="col">Errors</th>
-              <th scope="col">Viewport</th>
-              <th scope="col">Network</th>
-              <th scope="col">TTFB (ms)</th>
-              <th scope="col">Load (ms)</th>
-              <th scope="col">LCP (ms)</th>
-              <th scope="col">CLS</th>
-              <th scope="col">INP (ms)</th>
-              <th scope="col">Entered At</th>
-              <th scope="col">Left At</th>
-              <th scope="col">Left Reason</th>
-              <th scope="col">Clicks</th>
-              <th scope="col">Scrolls</th>
-              <th scope="col">Keydowns</th>
+              <th scope="col" data-col="id">ID</th>
+              <th scope="col" data-col="received_at">Received At</th>
+              <th scope="col" data-col="event_type">Event</th>
+              <th scope="col" data-col="url">URL</th>
+              <th scope="col" data-col="title">Title</th>
+              <th scope="col" data-col="session_id">Session ID</th>
+              <th scope="col" data-col="error_count">Errors</th>
+              <th scope="col" data-col="viewport">Viewport</th>
+              <th scope="col" data-col="network">Network</th>
+              <th scope="col" data-col="timing_ttfb">TTFB (ms)</th>
+              <th scope="col" data-col="timing_load">Load (ms)</th>
+              <th scope="col" data-col="vital_lcp">LCP (ms)</th>
+              <th scope="col" data-col="vital_cls">CLS</th>
+              <th scope="col" data-col="vital_inp">INP (ms)</th>
+              <th scope="col" data-col="page_entered">Entered At</th>
+              <th scope="col" data-col="page_left">Left At</th>
+              <th scope="col" data-col="left_reason">Left Reason</th>
+              <th scope="col" data-col="clicks">Clicks</th>
+              <th scope="col" data-col="scrolls">Scrolls</th>
+              <th scope="col" data-col="keydowns">Keydowns</th>
             </tr>
           </thead>
           <tbody id="raw-tbody"></tbody>
@@ -235,6 +286,38 @@
       }
     }
 
+    // ── Column definitions ─────────────────────────────────────
+
+    const COLUMNS = [
+      { key: 'id',           label: 'ID'          },
+      { key: 'received_at',  label: 'Received At' },
+      { key: 'event_type',   label: 'Event'       },
+      { key: 'url',          label: 'URL'         },
+      { key: 'title',        label: 'Title'       },
+      { key: 'session_id',   label: 'Session ID'  },
+      { key: 'error_count',  label: 'Errors'      },
+      { key: 'viewport',     label: 'Viewport'    },
+      { key: 'network',      label: 'Network'     },
+      { key: 'timing_ttfb',  label: 'TTFB (ms)'  },
+      { key: 'timing_load',  label: 'Load (ms)'  },
+      { key: 'vital_lcp',    label: 'LCP (ms)'   },
+      { key: 'vital_cls',    label: 'CLS'         },
+      { key: 'vital_inp',    label: 'INP (ms)'   },
+      { key: 'page_entered', label: 'Entered At' },
+      { key: 'page_left',    label: 'Left At'    },
+      { key: 'left_reason',  label: 'Left Reason'},
+      { key: 'clicks',       label: 'Clicks'     },
+      { key: 'scrolls',      label: 'Scrolls'    },
+      { key: 'keydowns',     label: 'Keydowns'   },
+    ];
+
+    /** Like cell(), but also stamps data-col on the element. */
+    function colCell(colKey, v, cls = '') {
+      const td = cell(v, cls);
+      td.dataset.col = colKey;
+      return td;
+    }
+
     // ── Render one page of rows ───────────────────────────────
 
     function renderRows(rows) {
@@ -243,7 +326,7 @@
       if (rows.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 20;
+        td.colSpan = COLUMNS.length;
         td.textContent = 'No records found.';
         td.style.textAlign = 'center';
         td.className = 'null-val';
@@ -255,12 +338,13 @@
       for (const r of rows) {
         const tr = document.createElement('tr');
 
-        tr.appendChild(cell(r.id));
-        tr.appendChild(cell(fmtDatetime(r.received_at)));
-        tr.appendChild(cell(r.event_type));
+        tr.appendChild(colCell('id',          r.id));
+        tr.appendChild(colCell('received_at', fmtDatetime(r.received_at)));
+        tr.appendChild(colCell('event_type',  r.event_type));
 
         // URL — truncate long paths
         const urlTd = document.createElement('td');
+        urlTd.dataset.col = 'url';
         urlTd.style.maxWidth = '200px';
         try {
           const u = new URL(r.url ?? '');
@@ -272,15 +356,16 @@
         }
         tr.appendChild(urlTd);
 
-        tr.appendChild(cell(r.title));
-        tr.appendChild(cell(r.session_id));
+        tr.appendChild(colCell('title',      r.title));
+        tr.appendChild(colCell('session_id', r.session_id));
 
         // Error count — highlight non-zero
         const errCount = Number(r.error_count ?? 0);
-        tr.appendChild(cell(errCount, errCount > 0 ? 'error-val' : ''));
+        tr.appendChild(colCell('error_count', errCount, errCount > 0 ? 'error-val' : ''));
 
         // Viewport
         const vpTd = document.createElement('td');
+        vpTd.dataset.col = 'viewport';
         if (r.viewport_width && r.viewport_height) {
           vpTd.textContent = `${r.viewport_width}×${r.viewport_height}`;
         } else {
@@ -289,18 +374,18 @@
         }
         tr.appendChild(vpTd);
 
-        tr.appendChild(cell(r.network_effective_type));
-        tr.appendChild(cell(r.timing_ttfb !== null ? Number(r.timing_ttfb).toFixed(0) : null));
-        tr.appendChild(cell(r.timing_load_event !== null ? Number(r.timing_load_event).toFixed(0) : null));
-        tr.appendChild(cell(r.vital_lcp !== null ? Number(r.vital_lcp).toFixed(0) : null));
-        tr.appendChild(cell(r.vital_cls !== null ? Number(r.vital_cls).toFixed(3) : null));
-        tr.appendChild(cell(r.vital_inp !== null ? Number(r.vital_inp).toFixed(0) : null));
-        tr.appendChild(cell(fmtDatetime(r.page_entered_at)));
-        tr.appendChild(cell(fmtDatetime(r.page_left_at)));
-        tr.appendChild(cell(r.page_left_reason));
-        tr.appendChild(cell(r.mouse_total_clicks));
-        tr.appendChild(cell(r.mouse_total_scrolls));
-        tr.appendChild(cell(r.keyboard_total_keydown));
+        tr.appendChild(colCell('network',      r.network_effective_type));
+        tr.appendChild(colCell('timing_ttfb',  r.timing_ttfb  !== null ? Number(r.timing_ttfb).toFixed(0)       : null));
+        tr.appendChild(colCell('timing_load',  r.timing_load_event !== null ? Number(r.timing_load_event).toFixed(0) : null));
+        tr.appendChild(colCell('vital_lcp',    r.vital_lcp !== null ? Number(r.vital_lcp).toFixed(0)            : null));
+        tr.appendChild(colCell('vital_cls',    r.vital_cls !== null ? Number(r.vital_cls).toFixed(3)            : null));
+        tr.appendChild(colCell('vital_inp',    r.vital_inp !== null ? Number(r.vital_inp).toFixed(0)            : null));
+        tr.appendChild(colCell('page_entered', fmtDatetime(r.page_entered_at)));
+        tr.appendChild(colCell('page_left',    fmtDatetime(r.page_left_at)));
+        tr.appendChild(colCell('left_reason',  r.page_left_reason));
+        tr.appendChild(colCell('clicks',       r.mouse_total_clicks));
+        tr.appendChild(colCell('scrolls',      r.mouse_total_scrolls));
+        tr.appendChild(colCell('keydowns',     r.keyboard_total_keydown));
 
         tbody.appendChild(tr);
       }
@@ -357,6 +442,47 @@
       offset = 0;
       load();
     });
+
+    // ── Column picker ─────────────────────────────────────────
+
+    const pickerBtn   = document.getElementById('btn-columns');
+    const pickerPanel = document.getElementById('col-picker-panel');
+    const rawTable    = document.querySelector('table.raw-table');
+
+    // Toggle panel open/closed
+    pickerBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const willOpen = pickerPanel.hidden;
+      pickerPanel.hidden = !willOpen;
+      pickerBtn.setAttribute('aria-expanded', String(willOpen));
+    });
+
+    // Prevent clicks inside the panel from closing it
+    pickerPanel.addEventListener('click', e => e.stopPropagation());
+
+    // Close when clicking anywhere else
+    document.addEventListener('click', () => {
+      pickerPanel.hidden = true;
+      pickerBtn.setAttribute('aria-expanded', 'false');
+    });
+
+    // Build one checkbox per column
+    for (const col of COLUMNS) {
+      const lbl = document.createElement('label');
+      const cb  = document.createElement('input');
+      cb.type    = 'checkbox';
+      cb.checked = true;
+      cb.dataset.col = col.key;
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode('\u00a0' + col.label));
+      pickerPanel.appendChild(lbl);
+
+      cb.addEventListener('change', () => {
+        rawTable.querySelectorAll(`[data-col="${col.key}"]`).forEach(el => {
+          el.style.display = cb.checked ? '' : 'none';
+        });
+      });
+    }
 
     // ── Initial load ──────────────────────────────────────────
     load();
