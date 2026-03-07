@@ -98,6 +98,9 @@
     /* Highlight columns with null / zero values */
     td.null-val { color: var(--text-muted); font-style: italic; }
     td.error-val { color: var(--negative); }
+
+    /* Widen URL column so more of the path is visible */
+    td[data-col="url"] { max-width: 400px; }
     td.good-val  { color: var(--positive); }
 
     #status-msg {
@@ -342,12 +345,11 @@
 
         tr.appendChild(colCell('id',          r.id));
         tr.appendChild(colCell('received_at', fmtDatetime(r.received_at)));
-        tr.appendChild(colCell('event_type',  r.event_type));
+        tr.appendChild(colCell('event_type',  r.event_type, r.event_type === 'error' ? 'error-val' : ''));
 
-        // URL — truncate long paths
+        // URL — show pathname; full URL on hover via title tooltip
         const urlTd = document.createElement('td');
         urlTd.dataset.col = 'url';
-        urlTd.style.maxWidth = '200px';
         try {
           const u = new URL(r.url ?? '');
           urlTd.textContent = u.pathname + (u.search ? u.search : '');
@@ -361,9 +363,26 @@
         tr.appendChild(colCell('title',      r.title));
         tr.appendChild(colCell('session_id', r.session_id));
 
-        // Error count — highlight non-zero
-        const errCount = Number(r.error_count ?? 0);
-        tr.appendChild(colCell('error_count', errCount, errCount > 0 ? 'error-val' : ''));
+        // Errors — for error-event rows show type + message tooltip;
+        //          for regular pageviews show count (red if > 0).
+        const errCount     = Number(r.error_count ?? 0);
+        const isErrorEvent = r.event_type === 'error';
+        const errTd = document.createElement('td');
+        errTd.dataset.col = 'error_count';
+        if (isErrorEvent) {
+          errTd.className   = 'error-val';
+          const errType     = r.error_type    ?? 'error';
+          const errMsg      = r.error_message ?? '';
+          errTd.textContent = errType;
+          errTd.title       = errMsg ? `${errType}: ${errMsg}` : errType;
+        } else if (errCount > 0) {
+          errTd.className   = 'error-val';
+          errTd.textContent = String(errCount);
+        } else {
+          errTd.className   = 'null-val';
+          errTd.textContent = '—';
+        }
+        tr.appendChild(errTd);
 
         // Viewport
         const vpTd = document.createElement('td');

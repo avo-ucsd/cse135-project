@@ -24,6 +24,9 @@
   --gap:          1.5rem;
 }
 
+/* --- Utilities -------------------------------------------- */
+.error-val { color: var(--negative); }
+
 /* --- Reset ------------------------------------------------ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

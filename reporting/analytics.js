@@ -190,11 +190,12 @@ function renderTopPages(pageviews) {
   for (const row of rows) {
     const url = row.url ?? '(unknown)';
     if (!urlMap.has(url)) {
-      urlMap.set(url, { views: 0, sessions: new Set(), totalDuration: 0, durationCount: 0 });
+      urlMap.set(url, { views: 0, sessions: new Set(), totalDuration: 0, durationCount: 0, errors: 0 });
     }
     const entry = urlMap.get(url);
     entry.views++;
     if (row.session_id) entry.sessions.add(row.session_id);
+    entry.errors += Number(row.error_count ?? 0);
     if (row.page_entered_at && row.page_left_at) {
       const dur = new Date(row.page_left_at) - new Date(row.page_entered_at);
       if (Number.isFinite(dur) && dur >= 0) {
@@ -209,8 +210,11 @@ function renderTopPages(pageviews) {
     .slice(0, 10);
 
   tbody.innerHTML = top10.map(([url, s], i) => {
-    const avgMs = s.durationCount > 0 ? s.totalDuration / s.durationCount : 0;
-    const path  = pathname(url);
+    const avgMs   = s.durationCount > 0 ? s.totalDuration / s.durationCount : 0;
+    const path    = pathname(url);
+    const errCell = s.errors > 0
+      ? `<td class="error-val">${s.errors.toLocaleString()}</td>`
+      : `<td>—</td>`;
     return `
       <tr>
         <td>${i + 1}</td>
@@ -218,7 +222,7 @@ function renderTopPages(pageviews) {
         <td>${s.views.toLocaleString()}</td>
         <td>${s.sessions.size.toLocaleString()}</td>
         <td>${fmtDuration(avgMs)}</td>
-        <td>-</td>
+        ${errCell}
       </tr>`;
   }).join('');
 }

@@ -129,6 +129,8 @@ switch ($resource) {
                     $stmt = $pdo->prepare("
                         SELECT id, received_at, event_type, url, title, referrer,
                                client_timestamp, session_id, error_count,
+                               JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.error.type'))    AS error_type,
+                               JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.error.message')) AS error_message,
                                user_agent, language, viewport_width, viewport_height,
                                screen_width, screen_height, pixel_ratio,
                                network_effective_type, network_downlink, network_rtt,
