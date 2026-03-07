@@ -219,7 +219,8 @@
               <th scope="col" data-col="url">URL</th>
               <th scope="col" data-col="title">Title</th>
               <th scope="col" data-col="session_id">Session ID</th>
-              <th scope="col" data-col="error_count">Errors</th>
+              <th scope="col" data-col="error_count">No. Errors</th>
+              <th scope="col" data-col="error_type">Error Type</th>
               <th scope="col" data-col="viewport">Viewport</th>
               <th scope="col" data-col="network">Network</th>
               <th scope="col" data-col="timing_ttfb">TTFB (ms)</th>
@@ -300,7 +301,8 @@
       { key: 'url',          label: 'URL'         },
       { key: 'title',        label: 'Title'       },
       { key: 'session_id',   label: 'Session ID'  },
-      { key: 'error_count',  label: 'Errors'      },
+      { key: 'error_count',  label: 'No. Errors'  },
+      { key: 'error_type',   label: 'Error Type'  },
       { key: 'viewport',     label: 'Viewport'    },
       { key: 'network',      label: 'Network'     },
       { key: 'timing_ttfb',  label: 'TTFB (ms)'  },
@@ -363,26 +365,22 @@
         tr.appendChild(colCell('title',      r.title));
         tr.appendChild(colCell('session_id', r.session_id));
 
-        // Errors — for error-event rows show type + message tooltip;
-        //          for regular pageviews show count (red if > 0).
-        const errCount     = Number(r.error_count ?? 0);
-        const isErrorEvent = r.event_type === 'error';
-        const errTd = document.createElement('td');
-        errTd.dataset.col = 'error_count';
-        if (isErrorEvent) {
-          errTd.className   = 'error-val';
-          const errType     = r.error_type    ?? 'error';
-          const errMsg      = r.error_message ?? '';
-          errTd.textContent = errType;
-          errTd.title       = errMsg ? `${errType}: ${errMsg}` : errType;
-        } else if (errCount > 0) {
-          errTd.className   = 'error-val';
-          errTd.textContent = String(errCount);
+        // No. Errors — show error_count; red if > 0
+        const errCount = Number(r.error_count ?? 0);
+        tr.appendChild(colCell('error_count', errCount > 0 ? errCount : null, errCount > 0 ? 'error-val' : ''));
+
+        // Error Type — show parsed error type from raw_payload (error beacons only)
+        const errTypeTd = document.createElement('td');
+        errTypeTd.dataset.col = 'error_type';
+        if (r.error_type) {
+          errTypeTd.className   = 'error-val';
+          errTypeTd.textContent = r.error_type;
+          errTypeTd.title       = r.error_message ? `${r.error_type}: ${r.error_message}` : r.error_type;
         } else {
-          errTd.className   = 'null-val';
-          errTd.textContent = '—';
+          errTypeTd.className   = 'null-val';
+          errTypeTd.textContent = '—';
         }
-        tr.appendChild(errTd);
+        tr.appendChild(errTypeTd);
 
         // Viewport
         const vpTd = document.createElement('td');
