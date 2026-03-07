@@ -219,7 +219,7 @@
               <th scope="col" data-col="url">URL</th>
               <th scope="col" data-col="title">Title</th>
               <th scope="col" data-col="session_id">Session ID</th>
-              <th scope="col" data-col="error_count">No. Errors</th>
+              <th scope="col" data-col="error_count">Num. Errors</th>
               <th scope="col" data-col="error_type">Error Type</th>
               <th scope="col" data-col="viewport">Viewport</th>
               <th scope="col" data-col="network">Network</th>
@@ -301,7 +301,7 @@
       { key: 'url',          label: 'URL'         },
       { key: 'title',        label: 'Title'       },
       { key: 'session_id',   label: 'Session ID'  },
-      { key: 'error_count',  label: 'No. Errors'  },
+      { key: 'error_count',  label: 'Num. Errors'  },
       { key: 'error_type',   label: 'Error Type'  },
       { key: 'viewport',     label: 'Viewport'    },
       { key: 'network',      label: 'Network'     },
@@ -365,9 +365,13 @@
         tr.appendChild(colCell('title',      r.title));
         tr.appendChild(colCell('session_id', r.session_id));
 
-        // No. Errors — show error_count; red if > 0
-        const errCount = Number(r.error_count ?? 0);
-        tr.appendChild(colCell('error_count', errCount > 0 ? errCount : null, errCount > 0 ? 'error-val' : ''));
+        // Num. Errors — error beacons are always 1 error each (error_count field
+        //              tracks the page tally, not the beacon itself); regular
+        //              pageview rows use error_count directly.
+        const errCount     = Number(r.error_count ?? 0);
+        const isErrorEvent = r.event_type === 'error';
+        const displayCount = isErrorEvent ? Math.max(1, errCount) : errCount;
+        tr.appendChild(colCell('error_count', displayCount > 0 ? displayCount : null, displayCount > 0 ? 'error-val' : ''));
 
         // Error Type — show parsed error type from raw_payload (error beacons only)
         const errTypeTd = document.createElement('td');
