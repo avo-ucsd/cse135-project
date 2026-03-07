@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Team Ate Analytics</title>
   <link rel="stylesheet" href="analytics.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
 
@@ -31,25 +32,25 @@
     </section>
 
     <section aria-label="Key metrics" class="kpi-strip">
-      <article class="kpi-card">
+      <article class="kpi-card" data-kpi="pageviews">
         <h2>Page Views</h2>
-        <p class="kpi-value">84,201</p>
-        <p class="kpi-delta positive">&#9650; 12.4%</p>
+        <p class="kpi-value">…</p>
+        <p class="kpi-delta"></p>
       </article>
-      <article class="kpi-card">
+      <article class="kpi-card" data-kpi="visitors">
         <h2>Unique Visitors</h2>
-        <p class="kpi-value">31,540</p>
-        <p class="kpi-delta positive">&#9650; 7.1%</p>
+        <p class="kpi-value">…</p>
+        <p class="kpi-delta"></p>
       </article>
-      <article class="kpi-card">
+      <article class="kpi-card" data-kpi="bounce">
         <h2>Bounce Rate</h2>
-        <p class="kpi-value">42.3%</p>
-        <p class="kpi-delta negative">&#9660; 3.2%</p>
+        <p class="kpi-value">…</p>
+        <p class="kpi-delta"></p>
       </article>
-      <article class="kpi-card">
+      <article class="kpi-card" data-kpi="session">
         <h2>Avg. Session</h2>
-        <p class="kpi-value">2m 47s</p>
-        <p class="kpi-delta positive">&#9650; 0.4%</p>
+        <p class="kpi-value">…</p>
+        <p class="kpi-delta"></p>
       </article>
     </section>
 
@@ -124,15 +125,8 @@
         </table>
       </figure>
     </section>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        fetch("https://reporting.teamate.site/api/pageviews/")
-          .then(res => res.json())
-          .then(data => console.log(data))
-          .catch(err => console.error("Error:", err));
-      })
-    </script>
   </main>
+  <script type="module" src="analytics.js"></script>
 
   <footer role="contentinfo">
     <p>Connected to <abbr title="DigitalOcean Droplet">DO</abbr> / Apache / MySQL; Made with love by Team Ate (and Claude AI)</p>
