@@ -376,13 +376,16 @@
         // Error Type — show parsed error type from raw_payload (error beacons only)
         const errTypeTd = document.createElement('td');
         errTypeTd.dataset.col = 'error_type';
-        if (r.error_type) {
+        if (displayCount === 0) {
+          errTypeTd.className   = 'null-val';
+          errTypeTd.textContent = '—';
+        } else if (r.error_type) {
           errTypeTd.className   = 'error-val';
           errTypeTd.textContent = r.error_type;
           errTypeTd.title       = r.error_message ? `${r.error_type}: ${r.error_message}` : r.error_type;
         } else {
-          errTypeTd.className   = 'null-val';
-          errTypeTd.textContent = '—';
+          errTypeTd.className   = 'error-val';
+          errTypeTd.textContent = 'NULL';
         }
         tr.appendChild(errTypeTd);
 
@@ -390,7 +393,7 @@
         const vpTd = document.createElement('td');
         vpTd.dataset.col = 'viewport';
         if (r.viewport_width && r.viewport_height) {
-          vpTd.textContent = `${r.viewport_width}×${r.viewport_height}`;
+          vpTd.textContent = `${r.viewport_width}x${r.viewport_height}`;
         } else {
           vpTd.textContent = '—';
           vpTd.className = 'null-val';
