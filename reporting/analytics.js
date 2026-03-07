@@ -218,7 +218,7 @@ function renderTopPages(pageviews) {
         <td>${s.views.toLocaleString()}</td>
         <td>${s.sessions.size.toLocaleString()}</td>
         <td>${fmtDuration(avgMs)}</td>
-        <td>–</td>
+        <td>-</td>
       </tr>`;
   }).join('');
 }
