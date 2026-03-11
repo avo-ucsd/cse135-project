@@ -130,8 +130,21 @@ function drawBarChart(canvas, tooltipEl, labels, values, title, barColor, toolti
       draw(hi);
       tooltipEl.innerHTML = `<strong>${escHtml(labels[hi])}</strong><br>${values[hi].toLocaleString()} ${tooltipSuffix}`;
       tooltipEl.style.display = 'block';
-      tooltipEl.style.left    = `${(M.left + step * hi + step / 2) / (canvas.width / rect.width) + 10}px`;
-      tooltipEl.style.top     = '30px';
+
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const barCenterScreenX = (M.left + step * hi + step / 2) / scaleX;
+      const barTopScreenY    = yScale(values[hi]) / scaleY;
+
+      let tooltipLeft = barCenterScreenX + 10;
+      let tooltipTop  = barTopScreenY - 55;
+
+      if (tooltipLeft + 160 > rect.width) tooltipLeft = barCenterScreenX - 170;
+      if (tooltipTop < 0)                 tooltipTop  = barTopScreenY + 10;
+
+      tooltipEl.style.left = `${tooltipLeft}px`;
+      tooltipEl.style.top  = `${tooltipTop}px`;
     } else {
       tooltipEl.style.display = 'none'; draw();
     }
@@ -177,7 +190,7 @@ function renderDepthChart(data) {
     else              buckets['5+']++;
   }
   drawBarChart(canvas, tooltip, Object.keys(buckets), Object.values(buckets),
-    'Pages per Session', 'rgba(52,211,153,0.55)');
+    'Pages per Session', 'rgba(185,79,247,0.9)');
 }
 
 // ── Sessions table ────────────────────────────────────────────────────────────
