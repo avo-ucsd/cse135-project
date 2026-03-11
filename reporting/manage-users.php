@@ -1,3 +1,23 @@
+<?php
+$htgroup_file = '/etc/apache2/.htgroup';
+$groups = [];
+
+if (file_exists($htgroup_file)) {
+    $lines = file($htgroup_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, ':') === false) continue;
+        [$group, $users_str] = explode(':', $line, 2);
+        $group = trim($group);
+        $users = array_filter(array_map('trim', explode(' ', trim($users_str))));
+        foreach ($users as $user) {
+            $groups[$user] = $group;
+        }
+    }
+}
+
+// Sort users alphabetically
+ksort($groups);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -69,16 +89,17 @@
             </tr>
           </thead>
           <tbody>
+            <?php if (empty($groups)): ?>
+            <tr><td colspan="3" style="color:var(--text-muted);text-align:center;">No users found in <?= htmlspecialchars($htgroup_file) ?></td></tr>
+            <?php else: ?>
+            <?php foreach ($groups as $username => $group): ?>
             <tr>
-              <td>dictator</td>
-              <td><span class="badge badge-superadmin">superadmin</span></td>
+              <td><?= htmlspecialchars($username) ?></td>
+              <td><span class="badge badge-<?= htmlspecialchars($group) ?>"><?= htmlspecialchars($group) ?></span></td>
               <td>—</td>
             </tr>
-            <tr>
-              <td>viewer</td>
-              <td><span class="badge badge-viewer">viewer</span></td>
-              <td>—</td>
-            </tr>
+            <?php endforeach; ?>
+            <?php endif; ?>
           </tbody>
         </table>
       </figure>
