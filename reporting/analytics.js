@@ -223,8 +223,8 @@ function renderTrafficChart(pageviews) {
 
         // Tick mark
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgb(249, 249, 249)';
+        ctx.lineWidth = 2;
         ctx.moveTo(x, y);
         ctx.lineTo(x, y + 6);
         ctx.stroke();
