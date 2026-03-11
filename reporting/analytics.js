@@ -257,8 +257,8 @@ function renderTrafficChart(pageviews) {
 
     // Gradient fill
     const gradient = ctx.createLinearGradient(0, margin.top, 0, margin.top + chartHeight);
-    gradient.addColorStop(0, 'rgba(22, 160, 133, 0.25)');
-    gradient.addColorStop(1, 'rgba(22, 160, 133, 0.02)');
+    gradient.addColorStop(0, 'rgba(80, 36, 146, 0.26)');
+    gradient.addColorStop(1, 'rgba(61, 19, 70, 0.02)');
     ctx.fillStyle = gradient;
     ctx.fill();
   }
