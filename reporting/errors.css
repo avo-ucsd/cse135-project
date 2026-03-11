@@ -1,0 +1,17 @@
+/* ============================================================
+   errors.css — Errors & Reliability page styles
+   Extends analytics.css; loaded after it.
+   ============================================================ */
+
+/* --- Chart grid ------------------------------------------ */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+@media (max-width: 700px) {
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
