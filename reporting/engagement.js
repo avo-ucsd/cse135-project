@@ -137,11 +137,15 @@ function drawBarChart(canvas, tooltipEl, labels, values, title, barColor, toolti
       const barCenterScreenX = (M.left + step * hi + step / 2) / scaleX;
       const barTopScreenY    = yScale(values[hi]) / scaleY;
 
-      let tooltipLeft = barCenterScreenX + 10;
+      // Centre tooltip horizontally over the bar, float above its top
+      const TOOLTIP_W = 160;
+      let tooltipLeft = barCenterScreenX - TOOLTIP_W / 2;
       let tooltipTop  = barTopScreenY - 55;
 
-      if (tooltipLeft + 160 > rect.width) tooltipLeft = barCenterScreenX - 170;
-      if (tooltipTop < 0)                 tooltipTop  = barTopScreenY + 10;
+      // Keep within figure bounds
+      if (tooltipLeft < 0)                       tooltipLeft = 0;
+      if (tooltipLeft + TOOLTIP_W > rect.width)  tooltipLeft = rect.width - TOOLTIP_W;
+      if (tooltipTop < 0)                        tooltipTop  = barTopScreenY + 10;
 
       tooltipEl.style.left = `${tooltipLeft}px`;
       tooltipEl.style.top  = `${tooltipTop}px`;
@@ -190,7 +194,7 @@ function renderDepthChart(data) {
     else              buckets['5+']++;
   }
   drawBarChart(canvas, tooltip, Object.keys(buckets), Object.values(buckets),
-    'Pages per Session', 'rgba(185,79,247,0.9)');
+    'Pages per Session', 'rgba(185,79,247,0.55)');
 }
 
 // ── Sessions table ────────────────────────────────────────────────────────────

@@ -242,7 +242,7 @@ h1 {
 }
 
 /* --- Tooltip --------------------------------------------- */
-#tooltip {
+#tooltip, .tooltip {
   position: absolute;
   background: rgba(23, 27, 38, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.15);
