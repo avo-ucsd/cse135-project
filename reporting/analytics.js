@@ -96,14 +96,14 @@ function renderKPIs(pageviews, sessions) {
 // ── Traffic chart ─────────────────────────────────────────────────────────────
 
 /**
- * Renders the daily-pageview line chart on #trafficChart via Chart.js.
+ * Renders the daily-pageview line chart on #trafficChart via raw Canvas 2D API.
  * Buckets received_at timestamps over the last 30 days.
  *
  * @param {{ data: object[] }} pageviews
  */
 function renderTrafficChart(pageviews) {
   const canvas = document.getElementById('trafficChart');
-  if (!canvas || typeof Chart === 'undefined') return;
+  if (!canvas) return;
 
   const rows = pageviews.data ?? [];
 
@@ -124,99 +124,288 @@ function renderTrafficChart(pageviews) {
     }
   }
 
-  const labels = Object.keys(buckets);
-  const values = Object.values(buckets);
+  // Convert to {date, value} array (noon UTC avoids timezone date-shift)
+  const data = Object.entries(buckets).map(([key, count]) => ({
+    date: new Date(key + 'T12:00:00'),
+    value: count,
+  }));
 
-  // Custom tooltip — Chart.js's built-in 'index' mode can mis-map cursor
-  // position to the wrong label when chart padding shifts tick pixels.
-  // Using chart.scales.x.getPixelForValue(i) ties lookup to the same
-  // coordinate system Chart.js uses when drawing, eliminating the offset.
-  const tooltip = document.createElement('div');
-  tooltip.style.cssText = [
-    'position:fixed',
-    'display:none',
-    'background:#1e2130',
-    'color:#e2e8f8',
-    'padding:8px 12px',
-    'border-radius:6px',
-    'font-size:13px',
-    'line-height:1.6',
-    'pointer-events:none',
-    'z-index:100',
-    'border:1px solid rgba(185,79,247,0.4)',
-    'box-shadow:0 2px 8px rgba(0,0,0,0.45)',
-  ].join(';');
-  document.body.appendChild(tooltip);
+  const ctx = canvas.getContext('2d');
+  const tooltip = document.getElementById('tooltip');
 
-  const chart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Page Views',
-        data: values,
-        borderColor: '#b94ff7',
-        backgroundColor: 'rgba(185,79,247,0.12)',
-        fill: true,
-        tension: 0.3,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false }, // replaced by custom tooltip below
-      },
-      scales: {
-        x: {
-          ticks: { color: '#717a96', maxTicksLimit: 8 },
-          grid:  { color: 'rgba(255,255,255,0.05)' },
-        },
-        y: {
-          beginAtZero: true,
-          ticks: { color: '#717a96', precision: 0 },
-          grid:  { color: 'rgba(255,255,255,0.05)' },
-        },
-      },
-    },
-  });
+  const margin = { top: 40, right: 25, bottom: 55, left: 60 };
+  const chartWidth  = canvas.width  - margin.left - margin.right;
+  const chartHeight = canvas.height - margin.top  - margin.bottom;
 
-  canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
+  // --- Scale Function ---
+  function linearScale(domainMin, domainMax, rangeMin, rangeMax) {
+    const fn = function(value) {
+      if (domainMax === domainMin) return rangeMin;
+      const fraction = (value - domainMin) / (domainMax - domainMin);
+      return rangeMin + fraction * (rangeMax - rangeMin);
+    };
+    fn.domainMin = domainMin;
+    fn.domainMax = domainMax;
+    fn.rangeMin = rangeMin;
+    fn.rangeMax = rangeMax;
+    return fn;
+  }
 
-    // Find the data index whose rendered x-pixel is closest to the cursor
-    const xScale = chart.scales.x;
-    let nearestIndex = -1;
-    let nearestDist  = Infinity;
-    for (let i = 0; i < labels.length; i++) {
-      const dist = Math.abs(mouseX - xScale.getPixelForValue(i));
-      if (dist < nearestDist) { nearestDist = dist; nearestIndex = i; }
+  // Compute scales
+  const values = data.map(d => d.value);
+  const yMin = Math.floor(Math.min(...values) / 50) * 50;
+  const yMax = Math.ceil(Math.max(...values) / 50) * 50;
+  const yMaxSafe = yMax === yMin ? yMin + 50 : yMax;
+
+  const xScale = linearScale(0, data.length - 1, margin.left, margin.left + chartWidth);
+  const yScale = linearScale(yMin, yMaxSafe, margin.top + chartHeight, margin.top);
+
+  // --- Drawing Functions ---
+  function drawChart() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGridLines();
+    drawXAxisLabels();
+    drawFilledArea();
+    drawLine();
+    drawDataPoints();
+    drawTitle();
+  }
+
+  function drawGridLines() {
+    const tickCount = 6;
+    const step = (yMaxSafe - yMin) / tickCount;
+
+    for (let i = 0; i <= tickCount; i++) {
+      const value = yMin + step * i;
+      const y = yScale(value);
+
+      // Grid line
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = 1;
+      ctx.moveTo(margin.left, y);
+      ctx.lineTo(margin.left + chartWidth, y);
+      ctx.stroke();
+
+      // Y-axis label
+      ctx.fillStyle = '#717a96';
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(Math.round(value).toLocaleString(), margin.left - 10, y);
     }
 
-    if (nearestIndex >= 0 && nearestDist < 30) {
-      const px = xScale.getPixelForValue(nearestIndex);
-      const py = chart.scales.y.getPixelForValue(values[nearestIndex]);
+    // Y-axis line
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, margin.top + chartHeight);
+    ctx.stroke();
+
+    // X-axis line
+    ctx.beginPath();
+    ctx.moveTo(margin.left, margin.top + chartHeight);
+    ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
+    ctx.stroke();
+  }
+
+  function drawXAxisLabels() {
+    ctx.fillStyle = '#717a96';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    data.forEach((point, i) => {
+      if (i % 5 === 0 || i === data.length - 1) {
+        const x = xScale(i);
+        const y = margin.top + chartHeight;
+
+        // Tick mark
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + 6);
+        ctx.stroke();
+
+        // Date label
+        const dateStr = point.date.toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric'
+        });
+        ctx.fillText(dateStr, x, y + 10);
+      }
+    });
+  }
+
+  function drawFilledArea() {
+    ctx.beginPath();
+    data.forEach((point, i) => {
+      const x = xScale(i);
+      const y = yScale(point.value);
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    // Close the area down to the x-axis
+    ctx.lineTo(xScale(data.length - 1), margin.top + chartHeight);
+    ctx.lineTo(xScale(0), margin.top + chartHeight);
+    ctx.closePath();
+
+    // Gradient fill
+    const gradient = ctx.createLinearGradient(0, margin.top, 0, margin.top + chartHeight);
+    gradient.addColorStop(0, 'rgba(22, 160, 133, 0.25)');
+    gradient.addColorStop(1, 'rgba(22, 160, 133, 0.02)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+  }
+
+  function drawLine() {
+    ctx.beginPath();
+    ctx.strokeStyle = '#16a085';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    data.forEach((point, i) => {
+      const x = xScale(i);
+      const y = yScale(point.value);
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    ctx.stroke();
+  }
+
+  function drawDataPoints() {
+    data.forEach((point, i) => {
+      const x = xScale(i);
+      const y = yScale(point.value);
+
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#16a085';
+      ctx.fill();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  }
+
+  function drawTitle() {
+    ctx.fillStyle = '#e8eaf0';
+    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Daily Pageviews \u2014 Last 30 Days', canvas.width / 2, 10);
+  }
+
+  // Highlight a specific point (for hover)
+  function highlightPoint(index) {
+    const x = xScale(index);
+    const y = yScale(data[index].value);
+
+    // Vertical guide line
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(22, 160, 133, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.moveTo(x, margin.top);
+    ctx.lineTo(x, margin.top + chartHeight);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Highlighted point
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+    ctx.strokeStyle = '#16a085';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#16a085';
+    ctx.fill();
+  }
+
+  // --- Tooltip Interaction ---
+  canvas.addEventListener('mousemove', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+
+    // Find nearest data point
+    let nearestIndex = -1;
+    let nearestDist = Infinity;
+
+    data.forEach((point, i) => {
+      const px = xScale(i);
+      const dist = Math.abs(mouseX - px);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestIndex = i;
+      }
+    });
+
+    if (nearestIndex >= 0 && nearestDist < 25 * scaleX) {
+      const point = data[nearestIndex];
+      const px = xScale(nearestIndex) / scaleX;
+      const py = yScale(point.value) / scaleX;
+
+      // Redraw chart with highlight
+      drawChart();
+      highlightPoint(nearestIndex);
+
+      // Position tooltip
+      const dateStr = point.date.toLocaleDateString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+      });
+      tooltip.innerHTML = '<strong>' + escHtml(dateStr) + '</strong><br>' +
+        point.value.toLocaleString() + ' pageviews';
       tooltip.style.display = 'block';
-      tooltip.style.left    = `${rect.left + px + 14}px`;
-      tooltip.style.top     = `${rect.top  + py - 48}px`;
-      tooltip.innerHTML     =
-        `<strong>${escHtml(labels[nearestIndex])}</strong><br>` +
-        `${values[nearestIndex].toLocaleString()} pageviews`;
+
+      // Position relative to chart container
+      let tooltipLeft = px + 15;
+      let tooltipTop  = py - 60;
+
+      // Keep tooltip in bounds
+      if (tooltipLeft + 180 > rect.width) {
+        tooltipLeft = px - 190;
+      }
+      if (tooltipTop < 0) {
+        tooltipTop = py + 15;
+      }
+
+      tooltip.style.left = tooltipLeft + 'px';
+      tooltip.style.top  = tooltipTop + 'px';
     } else {
       tooltip.style.display = 'none';
+      drawChart();
     }
   });
 
-  canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+  canvas.addEventListener('mouseleave', function() {
+    tooltip.style.display = 'none';
+    drawChart();
+  });
 
   // Update figcaption with real date range
+  const keys = Object.keys(buckets);
   const caption = canvas.closest('figure')?.querySelector('figcaption');
-  if (caption && labels.length >= 2) {
-    caption.textContent = `Daily page views, ${labels[0]} – ${labels[labels.length - 1]}`;
+  if (caption && keys.length >= 2) {
+    caption.textContent = `Daily page views, ${keys[0]} – ${keys[keys.length - 1]}`;
   }
+
+  // Initial draw
+  drawChart();
 }
 
 // ── Top Pages table ───────────────────────────────────────────────────────────
