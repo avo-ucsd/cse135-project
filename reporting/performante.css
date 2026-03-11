@@ -1,0 +1,113 @@
+/* ── Controls bar (mirrors .raw-controls in raw.html) ───────────────── */
+.perf-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.perf-controls label {
+    color: var(--text-muted);
+    font-size: .85rem;
+}
+
+.perf-controls select {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: .3rem .6rem;
+    font-size: .85rem;
+}
+
+/* ── Performance tables (extends raw.html's .raw-table pattern) ─────── */
+.table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+}
+
+table.perf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .78rem;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+}
+
+table.perf-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+table.perf-table th {
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .55rem .75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+table.perf-table td {
+    padding: .45rem .75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+table.perf-table tr:last-child td { border-bottom: none; }
+
+table.perf-table tbody tr:hover td {
+    background: var(--surface-alt);
+}
+
+td.null-val  { color: var(--text-muted); font-style: italic; }
+td.error-val { color: var(--negative); }
+td.good-val  { color: var(--positive); }
+td.warn-val  { color: #f59e0b; }
+
+/* Widen URL/page column */
+td[data-col="page"] { max-width: 380px; }
+
+/* Suggested-action badge */
+.action-badge {
+    display: inline-block;
+    font-size: .72rem;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    background: rgba(185, 79, 247, .15);
+    color: var(--accent);
+    font-style: normal;
+    white-space: nowrap;
+}
+
+/* Loading / empty state */
+#perf-status {
+    color: var(--text-muted);
+    font-size: .88rem;
+    padding: 2rem 0;
+    text-align: center;
+}
+
+/* Tooltip (mirrors #tooltip in analytics.css) */
+.perf-tooltip {
+    position: absolute;
+    background: rgba(23, 27, 38, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text);
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
