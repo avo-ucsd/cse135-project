@@ -182,7 +182,7 @@ function renderTrafficChart(pageviews) {
       // Grid line
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 3;
       ctx.moveTo(margin.left, y);
       ctx.lineTo(margin.left + chartWidth, y);
       ctx.stroke();
@@ -198,7 +198,7 @@ function renderTrafficChart(pageviews) {
     // Y-axis line
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.moveTo(margin.left, margin.top);
     ctx.lineTo(margin.left, margin.top + chartHeight);
     ctx.stroke();
