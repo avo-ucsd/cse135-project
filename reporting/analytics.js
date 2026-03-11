@@ -182,7 +182,7 @@ function renderTrafficChart(pageviews) {
       // Grid line
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 3;
       ctx.moveTo(margin.left, y);
       ctx.lineTo(margin.left + chartWidth, y);
       ctx.stroke();
@@ -198,7 +198,7 @@ function renderTrafficChart(pageviews) {
     // Y-axis line
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.moveTo(margin.left, margin.top);
     ctx.lineTo(margin.left, margin.top + chartHeight);
     ctx.stroke();
@@ -257,15 +257,15 @@ function renderTrafficChart(pageviews) {
 
     // Gradient fill
     const gradient = ctx.createLinearGradient(0, margin.top, 0, margin.top + chartHeight);
-    gradient.addColorStop(0, 'rgba(22, 160, 133, 0.25)');
-    gradient.addColorStop(1, 'rgba(22, 160, 133, 0.02)');
+    gradient.addColorStop(0, 'rgba(80, 36, 146, 0.26)');
+    gradient.addColorStop(1, 'rgba(61, 19, 70, 0.02)');
     ctx.fillStyle = gradient;
     ctx.fill();
   }
 
   function drawLine() {
     ctx.beginPath();
-    ctx.strokeStyle = '#16a085';
+    ctx.strokeStyle = '#b94ff7';
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -290,7 +290,7 @@ function renderTrafficChart(pageviews) {
 
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#16a085';
+      ctx.fillStyle = '#b94ff7';
       ctx.fill();
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 1.5;
@@ -313,7 +313,7 @@ function renderTrafficChart(pageviews) {
 
     // Vertical guide line
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(22, 160, 133, 0.3)';
+    ctx.strokeStyle = 'rgba(80, 36, 146, 0.26)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     ctx.moveTo(x, margin.top);
@@ -326,13 +326,13 @@ function renderTrafficChart(pageviews) {
     ctx.arc(x, y, 6, 0, Math.PI * 2);
     ctx.fillStyle = 'white';
     ctx.fill();
-    ctx.strokeStyle = '#16a085';
+    ctx.strokeStyle = '#b94ff7';
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#16a085';
+    ctx.fillStyle = '#b94ff7';
     ctx.fill();
   }
 
