@@ -43,6 +43,13 @@ ksort($groups);
       color: var(--accent);
       border: 1px solid rgba(185, 79, 247, 0.3);
     }
+
+    .badge-analyst {
+      background: rgba(248, 180, 0, 0.1);
+      color: #f8b400;
+      border: 1px solid rgba(248, 180, 0, 0.25);
+    }
+
     .badge-viewer {
       background: rgba(52, 211, 153, 0.1);
       color: var(--positive);
