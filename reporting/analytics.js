@@ -182,7 +182,7 @@ function renderTrafficChart(pageviews) {
       // Grid line
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 1;
       ctx.moveTo(margin.left, y);
       ctx.lineTo(margin.left + chartWidth, y);
       ctx.stroke();
@@ -313,8 +313,8 @@ function renderTrafficChart(pageviews) {
 
     // Vertical guide line
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(80, 36, 146, 0.26)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(203, 191, 221, 0.26)';
+    ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.moveTo(x, margin.top);
     ctx.lineTo(x, margin.top + chartHeight);
