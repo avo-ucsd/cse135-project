@@ -127,7 +127,28 @@ function renderTrafficChart(pageviews) {
   const labels = Object.keys(buckets);
   const values = Object.values(buckets);
 
-  new Chart(canvas, {
+  // Custom tooltip — Chart.js's built-in 'index' mode can mis-map cursor
+  // position to the wrong label when chart padding shifts tick pixels.
+  // Using chart.scales.x.getPixelForValue(i) ties lookup to the same
+  // coordinate system Chart.js uses when drawing, eliminating the offset.
+  const tooltip = document.createElement('div');
+  tooltip.style.cssText = [
+    'position:fixed',
+    'display:none',
+    'background:#1e2130',
+    'color:#e2e8f8',
+    'padding:8px 12px',
+    'border-radius:6px',
+    'font-size:13px',
+    'line-height:1.6',
+    'pointer-events:none',
+    'z-index:100',
+    'border:1px solid rgba(185,79,247,0.4)',
+    'box-shadow:0 2px 8px rgba(0,0,0,0.45)',
+  ].join(';');
+  document.body.appendChild(tooltip);
+
+  const chart = new Chart(canvas, {
     type: 'line',
     data: {
       labels,
@@ -146,7 +167,7 @@ function renderTrafficChart(pageviews) {
       responsive: true,
       plugins: {
         legend: { display: false },
-        tooltip: { mode: 'index', intersect: false },
+        tooltip: { enabled: false }, // replaced by custom tooltip below
       },
       scales: {
         x: {
@@ -161,6 +182,35 @@ function renderTrafficChart(pageviews) {
       },
     },
   });
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+
+    // Find the data index whose rendered x-pixel is closest to the cursor
+    const xScale = chart.scales.x;
+    let nearestIndex = -1;
+    let nearestDist  = Infinity;
+    for (let i = 0; i < labels.length; i++) {
+      const dist = Math.abs(mouseX - xScale.getPixelForValue(i));
+      if (dist < nearestDist) { nearestDist = dist; nearestIndex = i; }
+    }
+
+    if (nearestIndex >= 0 && nearestDist < 30) {
+      const px = xScale.getPixelForValue(nearestIndex);
+      const py = chart.scales.y.getPixelForValue(values[nearestIndex]);
+      tooltip.style.display = 'block';
+      tooltip.style.left    = `${rect.left + px + 14}px`;
+      tooltip.style.top     = `${rect.top  + py - 48}px`;
+      tooltip.innerHTML     =
+        `<strong>${escHtml(labels[nearestIndex])}</strong><br>` +
+        `${values[nearestIndex].toLocaleString()} pageviews`;
+    } else {
+      tooltip.style.display = 'none';
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
   // Update figcaption with real date range
   const caption = canvas.closest('figure')?.querySelector('figcaption');
