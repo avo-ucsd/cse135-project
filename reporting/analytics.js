@@ -131,22 +131,28 @@ function renderTrafficChart(pageviews) {
   // position to the wrong label when chart padding shifts tick pixels.
   // Using chart.scales.x.getPixelForValue(i) ties lookup to the same
   // coordinate system Chart.js uses when drawing, eliminating the offset.
-  const tooltip = document.createElement('div');
-  tooltip.style.cssText = [
-    'position:fixed',
-    'display:none',
-    'background:#1e2130',
-    'color:#e2e8f8',
-    'padding:8px 12px',
-    'border-radius:6px',
-    'font-size:13px',
-    'line-height:1.6',
-    'pointer-events:none',
-    'z-index:100',
-    'border:1px solid rgba(185,79,247,0.4)',
-    'box-shadow:0 2px 8px rgba(0,0,0,0.45)',
-  ].join(';');
-  document.body.appendChild(tooltip);
+  const tooltip = document.getElementById('tooltip');
+
+  // Tracks the snapped x-pixel of the hovered point for the crosshair plugin.
+  let crosshairX = null;
+
+  // Draws a thin dashed vertical line through the hovered data point.
+  const crosshairPlugin = {
+    id: 'crosshair',
+    afterDraw(ch) {
+      if (crosshairX === null) return;
+      const { ctx, chartArea: { top, bottom } } = ch;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(crosshairX, top);
+      ctx.lineTo(crosshairX, bottom);
+      ctx.lineWidth   = 1;
+      ctx.strokeStyle = 'rgba(185,79,247,0.55)';
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
 
   const chart = new Chart(canvas, {
     type: 'line',
@@ -166,8 +172,9 @@ function renderTrafficChart(pageviews) {
     options: {
       responsive: true,
       plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false }, // replaced by custom tooltip below
+        legend:   { display: false },
+        tooltip:  { enabled: false }, // replaced by custom tooltip below
+        crosshair: {},
       },
       scales: {
         x: {
@@ -181,16 +188,21 @@ function renderTrafficChart(pageviews) {
         },
       },
     },
+    plugins: [crosshairPlugin],
   });
 
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
+    // Work entirely in CSS pixels — getPixelForValue() returns CSS pixels,
+    // so mouseX must also be in CSS pixels (no canvas-DPI scaling).
     const mouseX = e.clientX - rect.left;
 
     // Find the data index whose rendered x-pixel is closest to the cursor
     const xScale = chart.scales.x;
+    const yScale = chart.scales.y;
     let nearestIndex = -1;
     let nearestDist  = Infinity;
+
     for (let i = 0; i < labels.length; i++) {
       const dist = Math.abs(mouseX - xScale.getPixelForValue(i));
       if (dist < nearestDist) { nearestDist = dist; nearestIndex = i; }
@@ -198,7 +210,11 @@ function renderTrafficChart(pageviews) {
 
     if (nearestIndex >= 0 && nearestDist < 30) {
       const px = xScale.getPixelForValue(nearestIndex);
-      const py = chart.scales.y.getPixelForValue(values[nearestIndex]);
+      const py = yScale.getPixelForValue(values[nearestIndex]);
+
+      crosshairX = px;
+      chart.draw();
+
       tooltip.style.display = 'block';
       tooltip.style.left    = `${rect.left + px + 14}px`;
       tooltip.style.top     = `${rect.top  + py - 48}px`;
@@ -206,11 +222,17 @@ function renderTrafficChart(pageviews) {
         `<strong>${escHtml(labels[nearestIndex])}</strong><br>` +
         `${values[nearestIndex].toLocaleString()} pageviews`;
     } else {
+      crosshairX = null;
+      chart.draw();
       tooltip.style.display = 'none';
     }
   });
 
-  canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+  canvas.addEventListener('mouseleave', () => {
+    crosshairX = null;
+    chart.draw();
+    tooltip.style.display = 'none';
+  });
 
   // Update figcaption with real date range
   const caption = canvas.closest('figure')?.querySelector('figcaption');
