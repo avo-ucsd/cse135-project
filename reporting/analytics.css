@@ -238,6 +238,23 @@ h1 {
 .chart-section canvas {
   width: 100% !important;
   height: 100% !important;
+  display: block;
+}
+
+/* --- Tooltip --------------------------------------------- */
+#tooltip {
+  position: absolute;
+  background: rgba(23, 27, 38, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text);
+  pointer-events: none;
+  display: none;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .chart-section figcaption {
