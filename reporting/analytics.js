@@ -265,7 +265,7 @@ function renderTrafficChart(pageviews) {
 
   function drawLine() {
     ctx.beginPath();
-    ctx.strokeStyle = '#16a085';
+    ctx.strokeStyle = '#b94ff7';
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -290,7 +290,7 @@ function renderTrafficChart(pageviews) {
 
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#16a085';
+      ctx.fillStyle = '#b94ff7';
       ctx.fill();
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 1.5;
@@ -313,7 +313,7 @@ function renderTrafficChart(pageviews) {
 
     // Vertical guide line
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(22, 160, 133, 0.3)';
+    ctx.strokeStyle = 'rgba(80, 36, 146, 0.26)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     ctx.moveTo(x, margin.top);
@@ -326,13 +326,13 @@ function renderTrafficChart(pageviews) {
     ctx.arc(x, y, 6, 0, Math.PI * 2);
     ctx.fillStyle = 'white';
     ctx.fill();
-    ctx.strokeStyle = '#16a085';
+    ctx.strokeStyle = '#b94ff7';
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#16a085';
+    ctx.fillStyle = '#b94ff7';
     ctx.fill();
   }
 
