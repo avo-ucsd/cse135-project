@@ -124,6 +124,11 @@
             text-align: center;
         }
     </style>
+    <script>
+        if (new URLSearchParams(window.location.search).has('failed')) {
+            document.getElementById('error-msg').style.display = 'block';
+        }
+    </script>
 </head>
 <body>
 
@@ -134,6 +139,10 @@
     <main>
         <div class="login-section">
             <h2>Sign In</h2>
+
+            <div class="error-msg" id="error-msg" style="display:none;">
+                Invalid username or password. Please try again.
+            </div>
 
             <form method="POST" action="/j_security_check">
                 <div class="form-group">
