@@ -1,0 +1,1519 @@
+﻿'use strict';
+
+const BASE = '/api';
+
+//  Global filter state 
+const filters = { days: 1, page: 'all' };
+
+//  Cached API data (fetched once, re-filtered on every refresh) 
+let cachedRows        = [];
+let cachedSessionData = [];
+let cachedVitals      = [];
+let cachedTechno      = [];
+let cachedErrors      = [];
+
+//  AbortControllers for chart mouse listeners 
+let topPagesBarAbort = null;
+let trendAbort       = null;
+let entryExitAbort   = null;
+
+//  API helper 
+
+async function apiFetch(path) {
+    const res = await fetch(BASE + path);
+    if (!res.ok) throw new Error(`API ${path} -> HTTP ${res.status}`);
+    const ct = res.headers.get('Content-Type') ?? '';
+    if (!ct.includes('application/json')) {
+        throw new Error(`Unexpected Content-Type "${ct}" for ${path}`);
+    }
+    return res.json();
+}
+
+//  Utilities 
+
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function fmtDuration(ms) {
+    const totalSec = Math.max(0, Math.round(ms / 1000));
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}m ${s}s`;
+}
+
+function fmtMs(ms) {
+    if (ms == null || !Number.isFinite(ms)) return '-';
+    if (ms >= 1000) return (ms / 1000).toFixed(2) + 's';
+    return Math.round(ms) + 'ms';
+}
+
+function formatBytes(bytes) {
+    if (bytes > 1_000_000) return (bytes / 1_000_000).toFixed(1) + ' MB';
+    if (bytes > 1_000) return Math.round(bytes / 1_000) + ' KB';
+    return bytes + ' B';
+}
+
+function pathname(url) {
+    try { return new URL(url).pathname; } catch { return url; }
+}
+
+function linearScale(domainMin, domainMax, rangeMin, rangeMax) {
+    const fn = function(value) {
+        if (domainMax === domainMin) return rangeMin;
+        const fraction = (value - domainMin) / (domainMax - domainMin);
+        return rangeMin + fraction * (rangeMax - rangeMin);
+    };
+    fn.domainMin = domainMin;
+    fn.domainMax = domainMax;
+    fn.rangeMin  = rangeMin;
+    fn.rangeMax  = rangeMax;
+    return fn;
+}
+
+function make30DayBuckets() {
+    const b = {};
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        b[d.toISOString().slice(0, 10)] = { total: 0, count: 0 };
+    }
+    return b;
+}
+
+function p75(arr) {
+    if (!arr.length) return null;
+    const sorted = [...arr].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length * 0.75)];
+}
+
+//  Error banner 
+
+function showError(msg) {
+    const banner = document.createElement('p');
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText =
+        'background:#f87171;color:#0f1117;padding:0.75rem 1.25rem;border-radius:8px;margin:1rem;font-weight:600';
+    banner.textContent = `Performance data failed to load: ${msg}`;
+    document.querySelector('main')?.prepend(banner);
+}
+
+//  Filter helpers 
+
+function cutoffMs() {
+    return Date.now() - filters.days * 24 * 60 * 60 * 1000;
+}
+
+function getFilteredRows(rows) {
+    const co = cutoffMs();
+    return rows.filter(row => {
+        const ts = new Date(row.received_at ?? row.page_entered_at).getTime();
+        const inTime = !isNaN(ts) ? ts >= co : true;
+        const inPage = filters.page === 'all' || row.url === filters.page;
+        return inTime && inPage;
+    });
+}
+
+function getFilteredSessionData(sessionData) {
+    const co = cutoffMs();
+    return sessionData.filter(s => {
+        const ts = new Date(s.session_start).getTime();
+        return !isNaN(ts) ? ts >= co : true;
+    });
+}
+
+function getFilteredVitals(vitals) {
+    const co = cutoffMs();
+    return vitals.filter(v => {
+        const ts = new Date(v.client_timestamp).getTime();
+        const inTime = !isNaN(ts) ? ts >= co : true;
+        const inPage = filters.page === 'all' || v.url === filters.page;
+        return inTime && inPage;
+    });
+}
+
+function getFilteredTechno(techno) {
+    const co = cutoffMs();
+    return techno.filter(t => {
+        const ts = new Date(t.client_timestamp).getTime();
+        return !isNaN(ts) ? ts >= co : true;
+    });
+}
+
+//  Aggregate builder 
+
+function buildAggregates(rows, sessionData) {
+    const urlMap = new Map();
+
+    for (const row of rows) {
+        if (row.event_type === 'error') continue;
+        const url = row.url ?? '(unknown)';
+        if (!urlMap.has(url)) {
+            urlMap.set(url, {
+                url,
+                views:          0,
+                sessions:       new Set(),
+                totalDuration:  0,
+                durationCount:  0,
+                errors:         0,
+                entrances:      0,
+                exits:          0,
+                dailyDurations: make30DayBuckets(),
+            });
+        }
+        const entry = urlMap.get(url);
+        entry.views++;
+        if (row.session_id) entry.sessions.add(row.session_id);
+        entry.errors += Number(row.error_count ?? 0);
+
+        if (row.page_entered_at && row.page_left_at) {
+            const dur = new Date(row.page_left_at) - new Date(row.page_entered_at);
+            if (Number.isFinite(dur) && dur >= 0) {
+                entry.totalDuration += dur;
+                entry.durationCount++;
+                const day = String(row.page_entered_at).slice(0, 10);
+                if (Object.prototype.hasOwnProperty.call(entry.dailyDurations, day)) {
+                    entry.dailyDurations[day].total += dur;
+                    entry.dailyDurations[day].count++;
+                }
+            }
+        }
+    }
+
+    const sessionMap = new Map();
+    for (const row of rows) {
+        if (!row.session_id || row.event_type === 'error') continue;
+        if (!sessionMap.has(row.session_id)) sessionMap.set(row.session_id, []);
+        sessionMap.get(row.session_id).push(row);
+    }
+
+    for (const pages of sessionMap.values()) {
+        pages.sort((a, b) =>
+            new Date(a.page_entered_at ?? a.received_at) -
+            new Date(b.page_entered_at ?? b.received_at)
+        );
+        const firstUrl = pages[0].url;
+        const lastUrl  = pages.at(-1).url;
+        if (urlMap.has(firstUrl)) urlMap.get(firstUrl).entrances++;
+        if (urlMap.has(lastUrl))  urlMap.get(lastUrl).exits++;
+    }
+
+    const bounceSessions = new Set(
+        sessionData
+            .filter(s => Number(s.pageview_count) === 1)
+            .map(s => s.session_id)
+    );
+
+    return { urlMap, bounceSessions, sessionMap };
+}
+
+//  Tier 1: Core Web Vitals 
+
+function renderSparkline(name, history) {
+    const canvas = document.querySelector(`[data-spark="${name}"]`);
+    if (!canvas || history.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const min = Math.min(...history);
+    const max = Math.max(...history);
+    const xStep = w / (history.length - 1);
+    const yScale = max > min ? (v) => h - ((v - min) / (max - min)) * (h - 4) - 2 : () => h / 2;
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#b94ff7';
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    history.forEach((v, i) => {
+        const x = i * xStep;
+        const y = yScale(v);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+}
+
+function renderVital(name, value, goodThreshold, poorThreshold, source) {
+    const card = document.querySelector(`[data-vital="${name}"]`);
+    if (!card) return;
+
+    const isCls = name === 'CLS';
+    const displayVal = isCls ? Number(value).toFixed(3) : Math.round(value);
+    const status = value <= goodThreshold ? 'good'
+                 : value <= poorThreshold ? 'warn'
+                 : 'bad';
+    const statusText = status === 'good' ? 'GOOD'
+                     : status === 'warn' ? 'NEEDS WORK'
+                     : 'POOR';
+
+    card.querySelector('.vital-value').textContent = displayVal;
+    card.className = `vital-card ${status}`;
+    card.querySelector('.vital-status').textContent =
+        source ? `${statusText} · ${escHtml(source)}` : statusText;
+
+    // Persist sparkline history in sessionStorage
+    const key = `spark_${name}`;
+    const history = JSON.parse(sessionStorage.getItem(key) || '[]');
+    history.push(Number(value));
+    if (history.length > 10) history.shift();
+    sessionStorage.setItem(key, JSON.stringify(history));
+    renderSparkline(name, history);
+}
+
+function renderVitalsFromApiData(vitalsData) {
+    if (!vitalsData.length) return;
+
+    const lcpVals = vitalsData.map(v => Number(v.vital_lcp)).filter(v => v > 0);
+    const clsVals = vitalsData.map(v => Number(v.vital_cls)).filter(v => v >= 0 && !isNaN(v));
+    const inpVals = vitalsData.map(v => Number(v.vital_inp)).filter(v => v > 0);
+
+    const lcpP75 = p75(lcpVals);
+    const clsP75 = p75(clsVals);
+    const inpP75 = p75(inpVals);
+
+    if (lcpP75 != null) renderVital('LCP', lcpP75, 2500, 4000, `P75 · ${lcpVals.length} samples`);
+    if (clsP75 != null) renderVital('CLS', clsP75, 0.1, 0.25, `P75 · ${clsVals.length} samples`);
+    if (inpP75 != null) renderVital('INP', inpP75, 200, 500, `P75 · ${inpVals.length} samples`);
+}
+
+function initCoreWebVitals() {
+    // FCP - from paint observer
+    try {
+        new PerformanceObserver((list) => {
+            const fcp = list.getEntriesByName('first-contentful-paint')[0];
+            if (fcp) renderVital('FCP', fcp.startTime, 1800, 3000, 'Live');
+        }).observe({ type: 'paint', buffered: true });
+    } catch {}
+
+    // TTFB - from Navigation Timing
+    try {
+        const nav = performance.getEntriesByType('navigation')[0];
+        if (nav) {
+            const ttfb = nav.responseStart - nav.requestStart;
+            if (ttfb >= 0) renderVital('TTFB', ttfb, 800, 1800, 'Live');
+        }
+    } catch {}
+
+    // LCP - live fallback (will be overridden by API P75)
+    try {
+        new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            const lcp = entries[entries.length - 1];
+            if (lcp) {
+                const card = document.querySelector('[data-vital="LCP"]');
+                // Only update if still showing default state
+                if (card && card.querySelector('.vital-value').textContent === '-') {
+                    renderVital('LCP', lcp.startTime, 2500, 4000, 'Live');
+                }
+            }
+        }).observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch {}
+
+    // CLS - live fallback
+    try {
+        let clsValue = 0;
+        new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+                if (!entry.hadRecentInput) clsValue += entry.value;
+            }
+            const card = document.querySelector('[data-vital="CLS"]');
+            if (card && card.querySelector('.vital-value').textContent === '-') {
+                renderVital('CLS', clsValue, 0.1, 0.25, 'Live');
+            }
+        }).observe({ type: 'layout-shift', buffered: true });
+    } catch {}
+
+    // INP - live fallback
+    try {
+        let maxInp = 0;
+        new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+                if (entry.duration > maxInp) {
+                    maxInp = entry.duration;
+                    const card = document.querySelector('[data-vital="INP"]');
+                    if (card && card.querySelector('.vital-value').textContent === '-') {
+                        renderVital('INP', maxInp, 200, 500, 'Live');
+                    }
+                }
+            }
+        }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
+    } catch {}
+
+    // Restore sparklines from sessionStorage
+    ['LCP', 'INP', 'CLS', 'FCP', 'TTFB'].forEach(name => {
+        const history = JSON.parse(sessionStorage.getItem(`spark_${name}`) || '[]');
+        if (history.length >= 2) renderSparkline(name, history);
+    });
+}
+
+//  Tier 2: Resource Timing 
+
+function getResourceType(entry) {
+    const url  = entry.name;
+    const init = entry.initiatorType;
+    if (init === 'xmlhttprequest' || init === 'fetch') return 'API';
+    if (/\.js(\?|$)/.test(url))                         return 'JS';
+    if (/\.css(\?|$)/.test(url))                        return 'CSS';
+    if (/\.(woff2?|ttf|eot|otf)/.test(url))             return 'Font';
+    if (/\.(png|jpe?g|gif|webp|svg|avif|ico)/.test(url)) return 'Image';
+    return 'Other';
+}
+
+const RESOURCE_COLORS = {
+    JS: '#f59e0b', CSS: '#3b82f6', Image: '#10b981',
+    Font: '#f87171', API: '#b94ff7', Other: '#717a96',
+};
+
+function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate) {
+    const totalSize = Object.values(sizeMap).reduce((a, b) => a + b, 0);
+
+    for (const [type, size] of Object.entries(sizeMap)) {
+        const row = document.querySelector(`[data-resource-bar="${type}"]`);
+        if (!row) continue;
+        const pct = totalSize > 0 ? Math.round((size / totalSize) * 100) : 0;
+        const fill = row.querySelector('.resource-fill');
+        if (fill) {
+            fill.style.width     = pct + '%';
+            fill.style.background = RESOURCE_COLORS[type] ?? '#717a96';
+        }
+        const pctEl  = row.querySelector('.resource-pct');
+        const sizeEl = row.querySelector('.resource-size');
+        if (pctEl)  pctEl.textContent  = pct + '%';
+        if (sizeEl) sizeEl.textContent = formatBytes(size);
+    }
+
+    const set = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
+    set('[data-total-size]', formatBytes(totalSize));
+    set('[data-total-reqs]', totalReqs.toLocaleString());
+    set('[data-cache-rate]', cacheRate + '%');
+}
+
+function renderSlowestRequests(resources) {
+    const tbody = document.querySelector('[data-slow-requests]');
+    if (!tbody) return;
+
+    const sorted = [...resources]
+        .sort((a, b) => b.duration - a.duration)
+        .slice(0, 8);
+
+    if (sorted.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="null-val" style="text-align:center">No resource data available</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = sorted.map((r, i) => {
+        const name    = r.name.split('/').pop().split('?')[0] || r.name;
+        const type    = getResourceType(r);
+        const dur     = Math.round(r.duration);
+        const size    = r.transferSize > 0 ? formatBytes(r.transferSize) : '-';
+        const cached  = r.transferSize === 0 && r.decodedBodySize > 0;
+        const durCls  = dur > 1000 ? 'error-val' : dur > 500 ? 'warn-val' : '';
+        return `<tr>
+            <td style="color:var(--text-muted)">${i + 1}</td>
+            <td data-col="page" title="${escHtml(r.name)}">${escHtml(name)}</td>
+            <td><span class="type-badge type-${type.toLowerCase()}">${escHtml(type)}</span></td>
+            <td class="${durCls}">${dur.toLocaleString()}ms</td>
+            <td>${escHtml(size)}</td>
+            <td>${cached ? '<span class="good-val">Cached ✅</span>' : '-'}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderWaterfall(resources) {
+    const axis      = document.querySelector('[data-waterfall-axis]');
+    const container = document.querySelector('[data-waterfall]');
+    if (!axis || !container) return;
+
+    if (resources.length === 0) {
+        container.innerHTML = '<p class="null-val" style="padding:1rem">No resource data available</p>';
+        return;
+    }
+
+    const nav     = performance.getEntriesByType('navigation')[0];
+    const pageEnd = nav
+        ? Math.max(nav.loadEventEnd, ...resources.map(r => r.responseEnd))
+        : Math.max(...resources.map(r => r.responseEnd));
+    const totalMs = Math.max(pageEnd, 100);
+
+    // Sort by startTime, take top 20
+    const sorted = [...resources]
+        .sort((a, b) => a.startTime - b.startTime)
+        .slice(0, 20);
+
+    // Axis tick marks
+    const tickCount = 6;
+    axis.innerHTML = '';
+    for (let t = 0; t <= tickCount; t++) {
+        const ms  = (totalMs / tickCount) * t;
+        const pct = (ms / totalMs) * 100;
+        const tick = document.createElement('span');
+        tick.className = 'wf-tick';
+        tick.style.left = pct + '%';
+        tick.textContent = ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : Math.round(ms) + 'ms';
+        axis.appendChild(tick);
+    }
+
+    // Waterfall rows
+    container.innerHTML = '';
+    sorted.forEach(r => {
+        const type   = getResourceType(r);
+        const name   = r.name.split('/').pop().split('?')[0] || r.name.split('/').slice(-2).join('/');
+        const left   = (r.startTime / totalMs) * 100;
+        const width  = Math.max((r.duration / totalMs) * 100, 0.3);
+        const row    = document.createElement('div');
+        row.className = 'wf-row';
+        row.innerHTML = `
+            <span class="wf-name" title="${escHtml(r.name)}">${escHtml(name.length > 35 ? name.slice(0, 33) + '...' : name)}</span>
+            <div class="wf-bar-track">
+                <div class="wf-bar wf-${type.toLowerCase()}"
+                     style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%"
+                     title="${escHtml(r.name)}&#10;Start: ${Math.round(r.startTime)}ms&#10;Duration: ${Math.round(r.duration)}ms&#10;Type: ${type}"></div>
+            </div>
+            <span class="wf-dur">${Math.round(r.duration)}ms</span>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function processResources() {
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            try {
+                const resources = performance.getEntriesByType('resource');
+                if (!resources.length) return;
+
+                const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
+                const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
+                let cached = 0;
+
+                for (const r of resources) {
+                    const type = getResourceType(r);
+                    typeMap[type] = (typeMap[type] || 0) + 1;
+                    sizeMap[type] = (sizeMap[type] || 0) + (r.transferSize || 0);
+                    if (r.transferSize === 0 && r.decodedBodySize > 0) cached++;
+                }
+
+                const cacheRate = resources.length > 0
+                    ? Math.round((cached / resources.length) * 100) : 0;
+
+                renderResourceBreakdown(typeMap, sizeMap, resources.length, cacheRate);
+                renderSlowestRequests(resources);
+                renderWaterfall(resources);
+            } catch (e) {
+                console.warn('[performance] Resource Timing:', e);
+            }
+        }, 200);
+    });
+}
+
+//  Tier 3: Device Segmentation 
+
+function deriveDevice(vpWidth) {
+    const w = Number(vpWidth);
+    if (!w || isNaN(w)) return 'unknown';
+    if (w < 768)  return 'mobile';
+    if (w < 1024) return 'tablet';
+    return 'desktop';
+}
+
+function renderDeviceSegment(technoData, vitalsData) {
+    const groups = { mobile: [], tablet: [], desktop: [] };
+
+    // Build a session->lcp map from vitals
+    const sessionLcp = new Map();
+    for (const v of vitalsData) {
+        const lcp = Number(v.vital_lcp);
+        if (v.session_id && lcp > 0) {
+            if (!sessionLcp.has(v.session_id) || lcp < sessionLcp.get(v.session_id)) {
+                sessionLcp.set(v.session_id, lcp);
+            }
+        }
+    }
+
+    // Group technographics by device, merge lcp if available
+    for (const t of technoData) {
+        const device = deriveDevice(t.viewport_width);
+        if (!groups[device]) continue;
+        const lcp = t.session_id ? sessionLcp.get(t.session_id) : undefined;
+        groups[device].push({ lcp });
+    }
+
+    for (const [device, entries] of Object.entries(groups)) {
+        const card = document.querySelector(`[data-device="${device}"]`);
+        if (!card) continue;
+
+        const lcpValues = entries.map(e => e.lcp).filter(v => v > 0);
+        const avgLcp    = lcpValues.length
+            ? Math.round(lcpValues.reduce((a, b) => a + b, 0) / lcpValues.length)
+            : null;
+
+        const lcpEl      = card.querySelector('.device-lcp-val');
+        const sessionEl  = card.querySelector('.device-session-count');
+
+        if (lcpEl) lcpEl.textContent = avgLcp != null ? fmtMs(avgLcp) : '-';
+        if (sessionEl) sessionEl.textContent = entries.length.toLocaleString();
+
+        // Color device card based on avg LCP
+        card.classList.remove('good', 'warn', 'bad');
+        if (avgLcp != null) {
+            card.classList.add(avgLcp <= 2500 ? 'good' : avgLcp <= 4000 ? 'warn' : 'bad');
+        }
+    }
+}
+
+//  Tier 3: Performance vs Engagement 
+
+function renderConversionBySpeed(rows, sessionData) {
+    const tbody = document.querySelector('[data-conversion-table]');
+    if (!tbody) return;
+
+    // Build bounce session set
+    const bounceSessions = new Set(
+        sessionData
+            .filter(s => Number(s.pageview_count) === 1)
+            .map(s => s.session_id)
+    );
+
+    // Buckets: fast (<2500), needs-work (2500-4000), poor (>4000), unknown
+    const buckets = {
+        fast:       { label: 'Fast',          range: '< 2500ms', lcps: [], sessions: new Set() },
+        needs_work: { label: 'Needs Work',     range: '2500-4000ms', lcps: [], sessions: new Set() },
+        poor:       { label: 'Poor',           range: '> 4000ms', lcps: [], sessions: new Set() },
+        unknown:    { label: 'No LCP data',    range: '-',        lcps: [], sessions: new Set() },
+    };
+
+    for (const row of rows) {
+        if (row.event_type === 'error') continue;
+        const lcp = Number(row.vital_lcp);
+        const sid = row.session_id;
+        if (!sid) continue;
+
+        let bucket;
+        if (!lcp || lcp === 0) bucket = 'unknown';
+        else if (lcp < 2500)   bucket = 'fast';
+        else if (lcp <= 4000)  bucket = 'needs_work';
+        else                   bucket = 'poor';
+
+        buckets[bucket].sessions.add(sid);
+        if (lcp > 0) buckets[bucket].lcps.push(lcp);
+    }
+
+    const order = ['fast', 'needs_work', 'poor', 'unknown'];
+    tbody.innerHTML = order.map(key => {
+        const b           = buckets[key];
+        const total       = b.sessions.size;
+        if (total === 0) return '';
+
+        const bounceCount = [...b.sessions].filter(sid => bounceSessions.has(sid)).length;
+        const bounceRate  = total > 0 ? ((bounceCount / total) * 100).toFixed(1) + '%' : '-';
+        const avgLcp      = b.lcps.length
+            ? fmtMs(b.lcps.reduce((a, v) => a + v, 0) / b.lcps.length)
+            : '-';
+
+        const bounceCls = bounceCount / total >= 0.7 ? 'error-val'
+                        : bounceCount / total >= 0.5 ? 'warn-val' : '';
+
+        const insight = key === 'fast'       ? 'Keep it up!'
+                      : key === 'needs_work' ? 'Optimize images & JS'
+                      : key === 'poor'       ? 'Critical - significant user impact'
+                      : 'Instrument LCP for full visibility';
+
+        return `<tr>
+            <td>${escHtml(b.label)}</td>
+            <td style="color:var(--text-muted)">${escHtml(b.range)}</td>
+            <td>${total.toLocaleString()}</td>
+            <td class="${bounceCls}">${escHtml(bounceRate)}</td>
+            <td>${escHtml(avgLcp)}</td>
+            <td style="color:var(--text-muted);font-style:italic">${escHtml(insight)}</td>
+        </tr>`;
+    }).join('');
+
+    if (!tbody.innerHTML.trim()) {
+        tbody.innerHTML = '<tr><td colspan="6" class="null-val" style="text-align:center">No LCP data in the selected time range</td></tr>';
+    }
+}
+
+//  Underperforming Pages (with unique JS errors) 
+
+function buildUniqueErrorMap(errorRows) {
+    // Map URL -> Set of unique "type|message" fingerprints
+    const map = new Map();
+    for (const row of errorRows) {
+        const url = row.url ?? '(unknown)';
+        if (!map.has(url)) map.set(url, new Set());
+        try {
+            const p = typeof row.raw_payload === 'string'
+                ? JSON.parse(row.raw_payload)
+                : (row.raw_payload ?? {});
+            const type    = p?.error?.type    ?? '';
+            const message = p?.error?.message ?? '';
+            const key     = `${type}|${message}`.trim();
+            if (key !== '|') map.get(url).add(key);
+        } catch { /* skip malformed */ }
+    }
+    return map;
+}
+
+function suggestedAction(m) {
+    const avgSec = m.avgMs !== null ? m.avgMs / 1000 : Infinity;
+    if (m.uniqueErrors > 0 && m.bounceRate >= 0.50) return 'Fix JS errors (impacting bounce)';
+    if (m.uniqueErrors > 0)                          return 'Fix JS errors';
+    if (m.bounceRate >= 0.70 && avgSec < 10)         return 'Improve content relevance';
+    if (m.bounceRate >= 0.70)                         return 'Reduce bounce rate';
+    if (avgSec < 10 && m.views >= 20)                 return 'Increase content depth';
+    if (avgSec < 30)                                  return 'Improve engagement';
+    return 'Monitor';
+}
+
+function renderUnderperf(urlMap, bounceSessions, uniqueErrorMap) {
+    const tbody = document.getElementById('underperf-tbody');
+    const wrap  = document.getElementById('underperf-wrap');
+    if (!tbody) return;
+
+    const candidates = [];
+
+    for (const entry of urlMap.values()) {
+        const totalSessions = entry.sessions.size;
+        const avgMs         = entry.durationCount > 0
+            ? entry.totalDuration / entry.durationCount : null;
+        const avgSec        = avgMs !== null ? avgMs / 1000 : Infinity;
+        const uniqueErrors  = uniqueErrorMap
+            ? (uniqueErrorMap.get(entry.url)?.size ?? 0) : 0;
+
+        let bounceCount = 0;
+        for (const sid of entry.sessions) {
+            if (bounceSessions.has(sid)) bounceCount++;
+        }
+        const bounceRate = totalSessions > 0 ? bounceCount / totalSessions : 0;
+
+        const flagBounce = bounceRate >= 0.50 && totalSessions >= 5;
+        const flagTime   = avgSec < 30 && entry.durationCount >= 5;
+        const flagErrors = uniqueErrors > 0;
+
+        if (!flagBounce && !flagTime && !flagErrors) continue;
+
+        candidates.push({ entry, bounceRate, avgMs, avgSec, uniqueErrors });
+    }
+
+    // Sort: prioritize pages with highest unique error count, then bounce rate
+    candidates.sort((a, b) =>
+        b.uniqueErrors - a.uniqueErrors ||
+        b.bounceRate - a.bounceRate ||
+        (a.avgSec - b.avgSec)
+    );
+
+    tbody.innerHTML = '';
+
+    if (candidates.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan   = 6;
+        td.textContent = 'No underperforming pages detected.';
+        td.style.textAlign = 'center';
+        td.className = 'null-val';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        if (wrap) wrap.hidden = false;
+        return;
+    }
+
+    candidates.forEach(({ entry, bounceRate, avgMs, uniqueErrors }) => {
+        const path      = pathname(entry.url);
+        const pctStr    = (bounceRate * 100).toFixed(1) + '%';
+        const action    = suggestedAction({
+            bounceRate, avgMs, errors: entry.errors, views: entry.views, uniqueErrors,
+        });
+        const bounceCls = bounceRate >= 0.70 ? 'error-val'
+                        : bounceRate >= 0.50 ? 'warn-val' : '';
+        const errCls    = uniqueErrors > 3 ? 'error-val' : uniqueErrors > 0 ? 'warn-val' : 'null-val';
+
+        const tr = document.createElement('tr');
+
+        const tdPage = document.createElement('td');
+        tdPage.dataset.col = 'page';
+        const a = document.createElement('a');
+        a.href        = entry.url;
+        a.textContent = path;
+        a.title       = entry.url;
+        tdPage.appendChild(a);
+        tr.appendChild(tdPage);
+
+        const tdViews = document.createElement('td');
+        tdViews.textContent = entry.views.toLocaleString();
+        tr.appendChild(tdViews);
+
+        const tdBounce = document.createElement('td');
+        tdBounce.textContent = pctStr;
+        if (bounceCls) tdBounce.className = bounceCls;
+        tr.appendChild(tdBounce);
+
+        const tdTime = document.createElement('td');
+        if (avgMs === null) {
+            tdTime.textContent = '-';
+            tdTime.className   = 'null-val';
+        } else {
+            tdTime.textContent = fmtDuration(avgMs);
+        }
+        tr.appendChild(tdTime);
+
+        const tdErr = document.createElement('td');
+        tdErr.className = errCls;
+        tdErr.textContent = uniqueErrors > 0 ? `${uniqueErrors} unique` : '-';
+        tr.appendChild(tdErr);
+
+        const tdAction = document.createElement('td');
+        const badge    = document.createElement('span');
+        badge.className   = 'action-badge';
+        badge.textContent = action;
+        tdAction.appendChild(badge);
+        tr.appendChild(tdAction);
+
+        tbody.appendChild(tr);
+    });
+
+    if (wrap) wrap.hidden = false;
+}
+
+//  Chart: Top Pages Bar (horizontal) 
+
+function drawTopPagesBar(urlMap, metric, topN) {
+    const canvas = document.getElementById('topPagesChart');
+    if (!canvas) return;
+
+    const getValue = e => metric === 'uniques' ? e.sessions.size : e.views;
+    const top = [...urlMap.values()]
+        .sort((a, b) => getValue(b) - getValue(a))
+        .slice(0, topN);
+
+    const ctx    = canvas.getContext('2d');
+    const margin = { top: 40, right: 80, bottom: 40, left: 220 };
+    const w      = canvas.width  - margin.left - margin.right;
+    const h      = canvas.height - margin.top  - margin.bottom;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (top.length === 0) {
+        ctx.fillStyle = '#717a96';
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    if (topPagesBarAbort) topPagesBarAbort.abort();
+    topPagesBarAbort = new AbortController();
+
+    const maxVal  = Math.max(...top.map(getValue));
+    const xScale  = linearScale(0, maxVal || 1, 0, w);
+    const barH    = Math.min(32, Math.floor(h / top.length) - 6);
+    const totalBH = (barH + 6) * top.length;
+    const startY  = margin.top + (h - totalBH) / 2;
+
+    const metricLabel = metric === 'uniques' ? 'Unique Visitors' : 'Page Views';
+    ctx.fillStyle = '#e8eaf0';
+    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Top ${topN} Pages - ${metricLabel}`, canvas.width / 2, 10);
+
+    const tickCount = 5;
+    for (let t = 0; t <= tickCount; t++) {
+        const val = (maxVal / tickCount) * t;
+        const x   = margin.left + xScale(val);
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(x, margin.top);
+        ctx.lineTo(x, margin.top + h);
+        ctx.stroke();
+        ctx.fillStyle = '#717a96';
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.round(val).toLocaleString(), x, margin.top + h + 18);
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, margin.top + h);
+    ctx.stroke();
+
+    top.forEach((entry, i) => {
+        const y    = startY + i * (barH + 6);
+        const val  = getValue(entry);
+        const barW = xScale(val);
+
+        const grad = ctx.createLinearGradient(margin.left, 0, margin.left + barW, 0);
+        grad.addColorStop(0, '#b94ff7');
+        grad.addColorStop(1, 'rgba(185,79,247,0.4)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect
+            ? ctx.roundRect(margin.left, y, barW, barH, 3)
+            : ctx.rect(margin.left, y, barW, barH);
+        ctx.fill();
+
+        const label = pathname(entry.url);
+        ctx.fillStyle = '#e8eaf0';
+        ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label.length > 30 ? label.slice(0, 28) + '...' : label,
+            margin.left - 8, y + barH / 2);
+
+        ctx.fillStyle = '#717a96';
+        ctx.textAlign = 'left';
+        ctx.fillText(val.toLocaleString(), margin.left + barW + 6, y + barH / 2);
+    });
+
+    const caption = document.getElementById('bar-caption');
+    if (caption) caption.textContent = `Top ${topN} pages by ${metricLabel.toLowerCase()}`;
+
+    const tooltipEl = document.getElementById('toppages-tooltip');
+    canvas.addEventListener('mousemove', e => {
+        if (!tooltipEl) return;
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width  / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const my     = (e.clientY - rect.top) * scaleY;
+
+        let hi = -1;
+        top.forEach((_, i) => {
+            const barTop    = startY + i * (barH + 6);
+            const barBottom = barTop + barH;
+            if (my >= barTop && my <= barBottom) hi = i;
+        });
+
+        if (hi >= 0) {
+            const entry  = top[hi];
+            const val    = getValue(entry);
+            const barTop = startY + hi * (barH + 6);
+            const barW   = xScale(val);
+
+            const barRightScreenX = (margin.left + barW) / scaleX;
+            const barMidScreenY   = (barTop + barH / 2) / scaleY;
+
+            tooltipEl.innerHTML =
+                `<strong>${escHtml(pathname(entry.url))}</strong><br>` +
+                `${metricLabel}: ${val.toLocaleString()}<br>` +
+                `Unique visitors: ${entry.sessions.size.toLocaleString()}`;
+            tooltipEl.style.display = 'block';
+
+            const TOOLTIP_W = 180;
+            let tLeft = barRightScreenX + 10;
+            let tTop  = barMidScreenY - 36;
+            if (tLeft + TOOLTIP_W > rect.width) tLeft = barRightScreenX - TOOLTIP_W - 10;
+            if (tLeft < 0)                      tLeft = 0;
+            if (tTop < 0)                       tTop  = barMidScreenY + 5;
+            tooltipEl.style.left = `${tLeft}px`;
+            tooltipEl.style.top  = `${tTop}px`;
+        } else {
+            tooltipEl.style.display = 'none';
+        }
+    }, { signal: topPagesBarAbort.signal });
+
+    canvas.addEventListener('mouseleave', () => {
+        if (tooltipEl) tooltipEl.style.display = 'none';
+    }, { signal: topPagesBarAbort.signal });
+}
+
+//  Chart: Time-on-Page Trend (line) 
+
+function drawTrendLine(urlMap, selectedUrl) {
+    const canvas  = document.getElementById('trendChart');
+    const tooltip = document.getElementById('trend-tooltip');
+    if (!canvas) return;
+
+    if (trendAbort) trendAbort.abort();
+    trendAbort = new AbortController();
+
+    const buckets = make30DayBuckets();
+
+    const entries = selectedUrl
+        ? (urlMap.has(selectedUrl) ? [urlMap.get(selectedUrl)] : [])
+        : [...urlMap.values()];
+
+    for (const entry of entries) {
+        for (const [day, b] of Object.entries(entry.dailyDurations)) {
+            if (Object.prototype.hasOwnProperty.call(buckets, day)) {
+                buckets[day].total += b.total;
+                buckets[day].count += b.count;
+            }
+        }
+    }
+
+    const data = Object.entries(buckets).map(([key, b]) => ({
+        date:  new Date(key + 'T12:00:00'),
+        value: b.count > 0 ? b.total / b.count / 1000 : 0,
+        key,
+    }));
+
+    const ctx    = canvas.getContext('2d');
+    const margin = { top: 40, right: 25, bottom: 55, left: 70 };
+    const cW     = canvas.width  - margin.left - margin.right;
+    const cH     = canvas.height - margin.top  - margin.bottom;
+
+    const vals    = data.map(d => d.value);
+    const yMin    = 0;
+    const yMaxRaw = Math.ceil(Math.max(...vals, 10) / 10) * 10;
+    const yMax    = yMaxRaw === yMin ? yMin + 60 : yMaxRaw;
+
+    const xScale = linearScale(0, data.length - 1, margin.left, margin.left + cW);
+    const yScale = linearScale(yMin, yMax, margin.top + cH, margin.top);
+
+    function drawChart(c) {
+        c.clearRect(0, 0, canvas.width, canvas.height);
+
+        const pageLabel = selectedUrl ? pathname(selectedUrl) : 'All Pages';
+        c.fillStyle = '#e8eaf0';
+        c.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'top';
+        c.fillText(`Avg. Time on Page - ${pageLabel}`, canvas.width / 2, 10);
+
+        const tickCount = 6;
+        const step = (yMax - yMin) / tickCount;
+        for (let i = 0; i <= tickCount; i++) {
+            const val = yMin + step * i;
+            const y   = yScale(val);
+            c.beginPath();
+            c.strokeStyle = 'rgba(255,255,255,0.07)';
+            c.lineWidth = 1;
+            c.moveTo(margin.left, y);
+            c.lineTo(margin.left + cW, y);
+            c.stroke();
+            c.fillStyle = '#717a96';
+            c.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+            c.textAlign = 'right';
+            c.textBaseline = 'middle';
+            const label = val >= 60 ? `${Math.floor(val/60)}m ${Math.round(val%60)}s` : `${Math.round(val)}s`;
+            c.fillText(label, margin.left - 8, y);
+        }
+
+        c.beginPath();
+        c.strokeStyle = 'rgba(255,255,255,0.15)';
+        c.lineWidth = 2;
+        c.moveTo(margin.left, margin.top);
+        c.lineTo(margin.left, margin.top + cH);
+        c.lineTo(margin.left + cW, margin.top + cH);
+        c.stroke();
+
+        c.fillStyle = '#717a96';
+        c.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'top';
+        data.forEach((pt, i) => {
+            if (i % 5 === 0 || i === data.length - 1) {
+                const x = xScale(i);
+                const y = margin.top + cH;
+                c.beginPath();
+                c.strokeStyle = 'rgb(249,249,249)';
+                c.lineWidth = 2;
+                c.moveTo(x, y);
+                c.lineTo(x, y + 6);
+                c.stroke();
+                c.fillText(pt.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), x, y + 10);
+            }
+        });
+
+        c.beginPath();
+        data.forEach((pt, i) => {
+            const x = xScale(i);
+            const y = yScale(pt.value);
+            i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+        });
+        c.lineTo(xScale(data.length - 1), margin.top + cH);
+        c.lineTo(xScale(0), margin.top + cH);
+        c.closePath();
+        const grad = c.createLinearGradient(0, margin.top, 0, margin.top + cH);
+        grad.addColorStop(0, 'rgba(80,36,146,0.26)');
+        grad.addColorStop(1, 'rgba(61,19,70,0.02)');
+        c.fillStyle = grad;
+        c.fill();
+
+        c.beginPath();
+        c.strokeStyle = '#b94ff7';
+        c.lineWidth = 2.5;
+        c.lineJoin = 'round';
+        c.lineCap  = 'round';
+        data.forEach((pt, i) => {
+            const x = xScale(i);
+            const y = yScale(pt.value);
+            i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+        });
+        c.stroke();
+
+        data.forEach((pt, i) => {
+            const x = xScale(i);
+            const y = yScale(pt.value);
+            c.beginPath();
+            c.arc(x, y, 3, 0, Math.PI * 2);
+            c.fillStyle   = '#b94ff7';
+            c.fill();
+            c.strokeStyle = 'white';
+            c.lineWidth   = 1.5;
+            c.stroke();
+        });
+    }
+
+    function highlightPoint(c, index) {
+        const x = xScale(index);
+        const y = yScale(data[index].value);
+        c.beginPath();
+        c.strokeStyle = 'rgb(161,113,232)';
+        c.lineWidth = 2;
+        c.setLineDash([4, 4]);
+        c.moveTo(x, margin.top);
+        c.lineTo(x, margin.top + cH);
+        c.stroke();
+        c.setLineDash([]);
+        c.beginPath();
+        c.arc(x, y, 6, 0, Math.PI * 2);
+        c.fillStyle   = 'white';
+        c.fill();
+        c.strokeStyle = '#b94ff7';
+        c.lineWidth   = 2.5;
+        c.stroke();
+        c.beginPath();
+        c.arc(x, y, 3, 0, Math.PI * 2);
+        c.fillStyle = '#b94ff7';
+        c.fill();
+    }
+
+    canvas.addEventListener('mousemove', function(e) {
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+
+        let nearestIndex = -1;
+        let nearestDist  = Infinity;
+        data.forEach((pt, i) => {
+            const dist = Math.abs(mouseX - xScale(i));
+            if (dist < nearestDist) { nearestDist = dist; nearestIndex = i; }
+        });
+
+        if (nearestIndex >= 0 && nearestDist < 25 * scaleX) {
+            const pt  = data[nearestIndex];
+            const px  = xScale(nearestIndex) / scaleX;
+            const py  = yScale(pt.value) / scaleX;
+            drawChart(ctx);
+            highlightPoint(ctx, nearestIndex);
+
+            const dateStr = pt.date.toLocaleDateString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+            });
+            tooltip.innerHTML = `<strong>${escHtml(dateStr)}</strong><br>Avg: ${escHtml(fmtDuration(pt.value * 1000))}`;
+            tooltip.style.display = 'block';
+
+            let tLeft = px + 15;
+            let tTop  = py - 60;
+            if (tLeft + 180 > rect.width) tLeft = px - 190;
+            if (tTop < 0) tTop = py + 15;
+            tooltip.style.left = tLeft + 'px';
+            tooltip.style.top  = tTop + 'px';
+        } else {
+            tooltip.style.display = 'none';
+            drawChart(ctx);
+        }
+    }, { signal: trendAbort.signal });
+
+    canvas.addEventListener('mouseleave', function() {
+        tooltip.style.display = 'none';
+        drawChart(ctx);
+    }, { signal: trendAbort.signal });
+
+    drawChart(ctx);
+
+    const caption = document.getElementById('trend-caption');
+    if (caption) {
+        const keys = Object.keys(make30DayBuckets());
+        caption.textContent =
+            `Average time on page per day, ${keys[0]} - ${keys[keys.length - 1]}`;
+    }
+}
+
+//  Chart: Entry vs Exit Stacked Bar 
+
+function drawEntryExitBar(urlMap, sessionMap) {
+    const canvas = document.getElementById('entryExitChart');
+    if (!canvas) return;
+
+    const top = [...urlMap.values()]
+        .filter(e => e.views > 0)
+        .sort((a, b) => b.entrances - a.entrances)
+        .slice(0, 10);
+
+    const ctx    = canvas.getContext('2d');
+    const margin = { top: 60, right: 25, bottom: 90, left: 55 };
+    const cW     = canvas.width  - margin.left - margin.right;
+    const cH     = canvas.height - margin.top  - margin.bottom;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (top.length === 0) {
+        ctx.fillStyle = '#717a96';
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No session data available', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    const barW   = Math.floor(cW / top.length) - 10;
+    const yScale = linearScale(0, 100, margin.top + cH, margin.top);
+
+    if (entryExitAbort) entryExitAbort.abort();
+    entryExitAbort = new AbortController();
+
+    for (let pct = 0; pct <= 100; pct += 20) {
+        const y = yScale(pct);
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(margin.left, y);
+        ctx.lineTo(margin.left + cW, y);
+        ctx.stroke();
+        ctx.fillStyle = '#717a96';
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${pct}%`, margin.left - 8, y);
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 2;
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, margin.top + cH);
+    ctx.lineTo(margin.left + cW, margin.top + cH);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e8eaf0';
+    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Entry vs Exit Rate - Top Landing Pages', canvas.width / 2, 10);
+
+    const legendX = canvas.width - 160;
+    const legendY = 32;
+    ctx.fillStyle = '#b94ff7';
+    ctx.fillRect(legendX, legendY, 12, 12);
+    ctx.fillStyle = '#e8eaf0';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Entry rate', legendX + 16, legendY + 6);
+
+    ctx.fillStyle = '#f87171';
+    ctx.fillRect(legendX + 90, legendY, 12, 12);
+    ctx.fillStyle = '#e8eaf0';
+    ctx.fillText('Exit rate', legendX + 106, legendY + 6);
+
+    top.forEach((entry, i) => {
+        const x             = margin.left + i * (barW + 10) + 5;
+        const entryRate     = entry.views > 0 ? (entry.entrances / entry.views) * 100 : 0;
+        const exitRate      = entry.views > 0 ? (entry.exits     / entry.views) * 100 : 0;
+        const entryRateDisp = Math.min(entryRate, 100);
+        const exitRateDisp  = Math.min(exitRate, Math.max(0, 100 - entryRateDisp));
+        const baseline      = margin.top + cH;
+        const entryH        = baseline - yScale(entryRateDisp);
+        const exitH         = baseline - yScale(exitRateDisp);
+
+        ctx.fillStyle = '#b94ff7';
+        ctx.fillRect(x, baseline - entryH, barW, entryH);
+
+        ctx.fillStyle = '#f87171';
+        ctx.fillRect(x, baseline - entryH - exitH, barW, exitH);
+
+        const label = pathname(entry.url);
+        const short = label.length > 20 ? label.slice(0, 18) + '...' : label;
+        ctx.save();
+        ctx.translate(x + barW / 2, baseline + 8);
+        ctx.rotate(-35 * Math.PI / 180);
+        ctx.fillStyle = '#717a96';
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(short, 0, 0);
+        ctx.restore();
+    });
+
+    const tooltipEl = document.getElementById('entryexit-tooltip');
+    canvas.addEventListener('mousemove', e => {
+        if (!tooltipEl) return;
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width  / rect.width;
+        const mx     = (e.clientX - rect.left) * scaleX;
+
+        let hi = -1;
+        top.forEach((_, i) => {
+            const barLeft  = margin.left + i * (barW + 10) + 5;
+            const barRight = barLeft + barW;
+            if (mx >= barLeft && mx <= barRight) hi = i;
+        });
+
+        if (hi >= 0) {
+            const entry      = top[hi];
+            const entryRate  = entry.views > 0 ? (entry.entrances / entry.views) * 100 : 0;
+            const exitRate   = entry.views > 0 ? (entry.exits     / entry.views) * 100 : 0;
+            const scaleY     = canvas.height / rect.height;
+            const barCenterX = (margin.left + hi * (barW + 10) + 5 + barW / 2) / scaleX;
+            const topBarY    = yScale(Math.min(entryRate + exitRate, 100)) / scaleY;
+
+            tooltipEl.innerHTML =
+                `<strong>${escHtml(pathname(entry.url))}</strong><br>` +
+                `Views: ${entry.views.toLocaleString()}<br>` +
+                `Entry rate: ${entryRate.toFixed(1)}%<br>` +
+                `Exit rate: ${exitRate.toFixed(1)}%`;
+            tooltipEl.style.display = 'block';
+
+            const TOOLTIP_W = 170;
+            let tLeft = barCenterX - TOOLTIP_W / 2;
+            let tTop  = topBarY - 90;
+            if (tLeft < 0)                      tLeft = 0;
+            if (tLeft + TOOLTIP_W > rect.width) tLeft = rect.width - TOOLTIP_W;
+            if (tTop < 0)                       tTop  = topBarY + 10;
+            tooltipEl.style.left = `${tLeft}px`;
+            tooltipEl.style.top  = `${tTop}px`;
+        } else {
+            tooltipEl.style.display = 'none';
+        }
+    }, { signal: entryExitAbort.signal });
+
+    canvas.addEventListener('mouseleave', () => {
+        if (tooltipEl) tooltipEl.style.display = 'none';
+    }, { signal: entryExitAbort.signal });
+}
+
+//  Table: Top Pages Detail 
+
+function renderTopDetail(urlMap, bounceSessions) {
+    const tbody  = document.getElementById('topdetail-tbody');
+    const wrap   = document.getElementById('topdetail-wrap');
+    const status = document.getElementById('perf-status');
+    if (!tbody) return;
+
+    const top20 = [...urlMap.values()]
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 20);
+
+    if (top20.length === 0) {
+        if (status) status.textContent = 'No pageview data for this filter.';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    top20.forEach((entry, i) => {
+        const avgMs = entry.durationCount > 0
+            ? entry.totalDuration / entry.durationCount : null;
+        const path  = pathname(entry.url);
+
+        const tr = document.createElement('tr');
+
+        const tdRank = document.createElement('td');
+        tdRank.textContent = i + 1;
+        tdRank.style.color = 'var(--text-muted)';
+        tr.appendChild(tdRank);
+
+        const tdPage = document.createElement('td');
+        tdPage.dataset.col = 'page';
+        const a = document.createElement('a');
+        a.href        = entry.url;
+        a.textContent = path;
+        a.title       = entry.url;
+        tdPage.appendChild(a);
+        tr.appendChild(tdPage);
+
+        const tdViews = document.createElement('td');
+        tdViews.textContent = entry.views.toLocaleString();
+        tr.appendChild(tdViews);
+
+        const tdUniq = document.createElement('td');
+        tdUniq.textContent = entry.sessions.size.toLocaleString();
+        tr.appendChild(tdUniq);
+
+        const tdTime = document.createElement('td');
+        if (avgMs === null) {
+            tdTime.textContent = '-';
+            tdTime.className   = 'null-val';
+        } else {
+            tdTime.textContent = fmtDuration(avgMs);
+        }
+        tr.appendChild(tdTime);
+
+        const tdEnt = document.createElement('td');
+        tdEnt.textContent = entry.entrances.toLocaleString();
+        tr.appendChild(tdEnt);
+
+        const tdExit = document.createElement('td');
+        tdExit.textContent = entry.exits.toLocaleString();
+        tr.appendChild(tdExit);
+
+        const tdErr = document.createElement('td');
+        if (entry.errors > 0) {
+            tdErr.textContent = entry.errors.toLocaleString();
+            tdErr.className   = 'error-val';
+        } else {
+            tdErr.textContent = '-';
+            tdErr.className   = 'null-val';
+        }
+        tr.appendChild(tdErr);
+
+        tbody.appendChild(tr);
+    });
+
+    if (status) status.hidden = true;
+    if (wrap)   wrap.hidden   = false;
+}
+
+//  Populate selects 
+
+function populateTrendSelect(urlMap) {
+    const sel = document.getElementById('trend-page-select');
+    if (!sel) return;
+    while (sel.options.length > 1) sel.remove(1);
+    const sorted = [...urlMap.values()]
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 30);
+    for (const entry of sorted) {
+        const opt = document.createElement('option');
+        opt.value       = entry.url;
+        opt.textContent = pathname(entry.url);
+        sel.appendChild(opt);
+    }
+}
+
+function populatePageSelect(urlMap) {
+    const sel = document.getElementById('page-select');
+    if (!sel) return;
+    const current = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    const sorted = [...urlMap.values()].sort((a, b) => b.views - a.views);
+    for (const entry of sorted) {
+        const opt = document.createElement('option');
+        opt.value       = entry.url;
+        opt.textContent = pathname(entry.url);
+        if (opt.value === current) opt.selected = true;
+        sel.appendChild(opt);
+    }
+}
+
+//  Filter label 
+
+function updateFilterLabel() {
+    const label   = document.getElementById('filter-label');
+    if (!label) return;
+    const pageLbl = filters.page === 'all' ? 'All Pages' : pathname(filters.page);
+    const dayLbl  = filters.days === 1 ? 'Last 24 hours' : `Last ${filters.days} days`;
+    label.textContent = `${pageLbl} · ${dayLbl}`;
+}
+
+//  Master refresh 
+
+function refreshAllSections() {
+    const filteredRows        = getFilteredRows(cachedRows);
+    const filteredSessionData = getFilteredSessionData(cachedSessionData);
+    const filteredVitals      = getFilteredVitals(cachedVitals);
+    const filteredTechno      = getFilteredTechno(cachedTechno);
+
+    const { urlMap, bounceSessions, sessionMap } =
+        buildAggregates(filteredRows, filteredSessionData);
+
+    // Existing charts
+    const barMetric = document.getElementById('bar-metric-select');
+    const barTopN   = document.getElementById('bar-topn-select');
+    const trendSel  = document.getElementById('trend-page-select');
+
+    drawTopPagesBar(urlMap, barMetric?.value ?? 'views', Number(barTopN?.value ?? 10));
+    drawTrendLine(urlMap, trendSel?.value ?? '');
+    drawEntryExitBar(urlMap, sessionMap);
+
+    // Tables
+    renderTopDetail(urlMap, bounceSessions);
+
+    const uniqueErrorMap = buildUniqueErrorMap(cachedErrors);
+    renderUnderperf(urlMap, bounceSessions, uniqueErrorMap);
+
+    // Populate selects
+    populateTrendSelect(urlMap);
+    populatePageSelect(urlMap);
+
+    // Tier 1: vitals P75 from API data
+    renderVitalsFromApiData(filteredVitals);
+
+    // Tier 3
+    renderDeviceSegment(filteredTechno, filteredVitals);
+    renderConversionBySpeed(filteredRows, filteredSessionData);
+
+    updateFilterLabel();
+}
+
+//  Wire controls 
+
+function bindFilterControls() {
+    // Time range buttons
+    document.querySelectorAll('[data-days]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-days]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filters.days = Number(btn.dataset.days);
+            refreshAllSections();
+        });
+    });
+
+    // Page selector
+    document.getElementById('page-select')?.addEventListener('change', e => {
+        filters.page = e.target.value;
+        refreshAllSections();
+    });
+
+    // Chart controls (metric / topN / trend page)
+    document.getElementById('bar-metric-select')?.addEventListener('change', () => refreshAllSections());
+    document.getElementById('bar-topn-select')?.addEventListener('change',   () => refreshAllSections());
+    document.getElementById('trend-page-select')?.addEventListener('change', () => refreshAllSections());
+}
+
+//  Init 
+
+async function init() {
+    // Start resource timing collection (runs after page load)
+    processResources();
+
+    // Start live Core Web Vitals observers immediately
+    initCoreWebVitals();
+
+    try {
+        const [pageviews, sessions, vitalsResp, technoResp, errorsResp] = await Promise.all([
+            apiFetch('/pageviews?limit=1000'),
+            apiFetch('/sessions'),
+            apiFetch('/vitals'),
+            apiFetch('/technographics'),
+            apiFetch('/errors'),
+        ]);
+
+        cachedRows        = pageviews.data ?? [];
+        cachedSessionData = sessions.data  ?? [];
+        cachedVitals      = vitalsResp.data ?? [];
+        cachedTechno      = technoResp.data ?? [];
+        cachedErrors      = errorsResp.data ?? [];
+
+        bindFilterControls();
+        refreshAllSections();
+
+    } catch (err) {
+        console.error('[performance]', err);
+        showError(err.message);
+        const status = document.getElementById('perf-status');
+        if (status) status.hidden = true;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', init);

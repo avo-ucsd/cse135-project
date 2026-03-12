@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance — Team Ate Analytics</title>
+  <link rel="stylesheet" href="analytics.css">
+  <link rel="stylesheet" href="performance.css">
+</head>
+<body>
+
+  <header role="banner">
+    <nav aria-label="Primary navigation">
+      <a href="index.html" class="wordmark">Team <strong>Ate</strong></a>
+      <ul role="list">
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="engagement.html">User Engagement</a></li>
+        <li><a href="performance.html" aria-current="page">Performance</a></li>
+        <li><a href="errors.html">Errors</a></li>
+        <li><a href="raw.html">Raw Data</a></li>
+      </ul>
+      <form method="post" action="/logout" class="logout-form">
+        <button type="submit" class="btn-logout">Log out</button>
+      </form>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- ── Page Header + Global Filters ────────────────────────────────── -->
+    <section aria-labelledby="page-title" class="page-header">
+      <hgroup>
+        <p class="eyebrow">Analytics</p>
+        <h1 id="page-title">Page Performance</h1>
+        <p class="page-subtitle" id="filter-label">All Pages · Last 24 hours</p>
+      </hgroup>
+      <div class="global-controls">
+        <div class="time-filter" role="group" aria-label="Time range">
+          <button class="time-btn active" data-days="1">1D</button>
+          <button class="time-btn" data-days="7">7D</button>
+          <button class="time-btn" data-days="30">30D</button>
+        </div>
+        <div class="page-filter">
+          <label for="page-select" class="sr-only">Select page</label>
+          <select id="page-select" aria-label="Select page">
+            <option value="all">All Pages</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Tier 1: Core Web Vitals ──────────────────────────────────────── -->
+    <section aria-labelledby="vitals-heading" class="vitals-section">
+      <header class="section-header">
+        <h2 id="vitals-heading">Core Web Vitals</h2>
+        <p class="section-sub">P75 from real-user data · Live reading for current page load</p>
+      </header>
+      <div class="vitals-grid">
+
+        <div class="vital-card" data-vital="LCP">
+          <div class="vital-header">
+            <span class="vital-name">LCP</span>
+            <span class="vital-full">Largest Contentful Paint</span>
+          </div>
+          <div class="vital-body">
+            <span class="vital-value">—</span>
+            <span class="vital-unit">ms</span>
+          </div>
+          <div class="vital-status">Waiting…</div>
+          <canvas class="vital-spark" data-spark="LCP" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="vital-threshold">Good &lt; 2500ms · Poor &gt; 4000ms</div>
+        </div>
+
+        <div class="vital-card" data-vital="INP">
+          <div class="vital-header">
+            <span class="vital-name">INP</span>
+            <span class="vital-full">Interaction to Next Paint</span>
+          </div>
+          <div class="vital-body">
+            <span class="vital-value">—</span>
+            <span class="vital-unit">ms</span>
+          </div>
+          <div class="vital-status">Waiting…</div>
+          <canvas class="vital-spark" data-spark="INP" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="vital-threshold">Good &lt; 200ms · Poor &gt; 500ms</div>
+        </div>
+
+        <div class="vital-card" data-vital="CLS">
+          <div class="vital-header">
+            <span class="vital-name">CLS</span>
+            <span class="vital-full">Cumulative Layout Shift</span>
+          </div>
+          <div class="vital-body">
+            <span class="vital-value">—</span>
+            <span class="vital-unit"></span>
+          </div>
+          <div class="vital-status">Waiting…</div>
+          <canvas class="vital-spark" data-spark="CLS" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="vital-threshold">Good &lt; 0.1 · Poor &gt; 0.25</div>
+        </div>
+
+        <div class="vital-card" data-vital="FCP">
+          <div class="vital-header">
+            <span class="vital-name">FCP</span>
+            <span class="vital-full">First Contentful Paint</span>
+          </div>
+          <div class="vital-body">
+            <span class="vital-value">—</span>
+            <span class="vital-unit">ms</span>
+          </div>
+          <div class="vital-status">Waiting…</div>
+          <canvas class="vital-spark" data-spark="FCP" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="vital-threshold">Good &lt; 1800ms · Poor &gt; 3000ms</div>
+        </div>
+
+        <div class="vital-card" data-vital="TTFB">
+          <div class="vital-header">
+            <span class="vital-name">TTFB</span>
+            <span class="vital-full">Time to First Byte</span>
+          </div>
+          <div class="vital-body">
+            <span class="vital-value">—</span>
+            <span class="vital-unit">ms</span>
+          </div>
+          <div class="vital-status">Waiting…</div>
+          <canvas class="vital-spark" data-spark="TTFB" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="vital-threshold">Good &lt; 800ms · Poor &gt; 1800ms</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Tier 2: Resource Load Breakdown ──────────────────────────────── -->
+    <section aria-labelledby="resources-heading" class="resources-section">
+      <header class="section-header">
+        <h2 id="resources-heading">Resource Load Breakdown</h2>
+        <div class="resource-summary">
+          <span>Requests: <strong data-total-reqs>—</strong></span>
+          <span>Total size: <strong data-total-size>—</strong></span>
+          <span>Cache hit rate: <strong data-cache-rate>—</strong></span>
+        </div>
+      </header>
+      <div class="resource-bars">
+        <div class="resource-row" data-resource-bar="JS">
+          <span class="resource-label">JavaScript</span>
+          <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
+          <span class="resource-pct">—</span>
+          <span class="resource-size">—</span>
+        </div>
+        <div class="resource-row" data-resource-bar="CSS">
+          <span class="resource-label">CSS</span>
+          <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
+          <span class="resource-pct">—</span>
+          <span class="resource-size">—</span>
+        </div>
+        <div class="resource-row" data-resource-bar="Image">
+          <span class="resource-label">Images</span>
+          <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
+          <span class="resource-pct">—</span>
+          <span class="resource-size">—</span>
+        </div>
+        <div class="resource-row" data-resource-bar="Font">
+          <span class="resource-label">Fonts</span>
+          <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
+          <span class="resource-pct">—</span>
+          <span class="resource-size">—</span>
+        </div>
+        <div class="resource-row" data-resource-bar="API">
+          <span class="resource-label">API / XHR</span>
+          <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
+          <span class="resource-pct">—</span>
+          <span class="resource-size">—</span>
+        </div>
+        <div class="resource-row" data-resource-bar="Other">
+          <span class="resource-label">Other</span>
+          <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
+          <span class="resource-pct">—</span>
+          <span class="resource-size">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Tier 2: Slowest Requests ─────────────────────────────────────── -->
+    <section aria-labelledby="slow-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="slow-heading">Slowest Requests</h2>
+        <p class="section-sub">Top 8 slowest resources for the current page load</p>
+      </header>
+      <div class="table-scroll">
+        <table class="perf-table" aria-label="Top 8 slowest resource requests">
+          <caption class="sr-only">Slowest resource requests for this page load ranked by duration</caption>
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Resource</th>
+              <th scope="col">Type</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Size</th>
+              <th scope="col">Cached</th>
+            </tr>
+          </thead>
+          <tbody data-slow-requests>
+            <tr><td colspan="6" class="null-val" style="text-align:center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Tier 2: Request Waterfall ────────────────────────────────────── -->
+    <section aria-labelledby="waterfall-heading" class="chart-section waterfall-section">
+      <header class="section-header">
+        <h2 id="waterfall-heading">Request Waterfall</h2>
+        <p class="section-sub">Top 20 resources by start time — current page load</p>
+      </header>
+      <div class="waterfall-legend">
+        <span class="wf-swatch wf-js">JS</span>
+        <span class="wf-swatch wf-css">CSS</span>
+        <span class="wf-swatch wf-img">Image</span>
+        <span class="wf-swatch wf-font">Font</span>
+        <span class="wf-swatch wf-api">API</span>
+        <span class="wf-swatch wf-other">Other</span>
+      </div>
+      <div class="waterfall-wrap">
+        <div class="waterfall-axis" data-waterfall-axis></div>
+        <div class="waterfall-rows" data-waterfall>
+          <p class="null-val" style="padding:1rem">Loading waterfall…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Chart: Top Pages Bar ──────────────────────────────────────────── -->
+    <section aria-labelledby="bar-heading" class="chart-section">
+      <header class="section-header">
+        <h2 id="bar-heading">Top Pages</h2>
+        <div class="perf-controls">
+          <label for="bar-metric-select">Metric</label>
+          <select id="bar-metric-select">
+            <option value="views" selected>Page Views</option>
+            <option value="uniques">Unique Visitors</option>
+          </select>
+          <label for="bar-topn-select">Show top</label>
+          <select id="bar-topn-select">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+      </header>
+      <figure>
+        <canvas id="topPagesChart" width="900" height="320"
+                aria-label="Horizontal bar chart of top pages by selected metric"
+                role="img"></canvas>
+        <div id="toppages-tooltip" class="perf-tooltip"></div>
+        <figcaption id="bar-caption">Top 10 pages by page views</figcaption>
+      </figure>
+    </section>
+
+    <!-- ── Chart: Time-on-Page Trend ─────────────────────────────────────── -->
+    <section aria-labelledby="trend-heading" class="chart-section">
+      <header class="section-header">
+        <h2 id="trend-heading">Time-on-Page Trend</h2>
+        <div class="perf-controls">
+          <label for="trend-page-select">Page</label>
+          <select id="trend-page-select">
+            <option value="">— all pages —</option>
+          </select>
+        </div>
+      </header>
+      <figure>
+        <canvas id="trendChart" width="900" height="280"
+                aria-label="Line chart of average time on page over 30 days"
+                role="img"></canvas>
+        <div id="trend-tooltip" class="perf-tooltip"></div>
+        <figcaption id="trend-caption">Average time on page per day — last 30 days</figcaption>
+      </figure>
+    </section>
+
+    <!-- ── Chart: Entry vs Exit Rate ────────────────────────────────────── -->
+    <section aria-labelledby="entryexit-heading" class="chart-section">
+      <h2 id="entryexit-heading">Entry vs Exit Rate</h2>
+      <figure>
+        <canvas id="entryExitChart" width="900" height="320"
+                aria-label="Stacked bar chart of entry and exit rates per landing page"
+                role="img"></canvas>
+        <div id="entryexit-tooltip" class="perf-tooltip"></div>
+        <figcaption>Entry rate (session-first pageview) vs exit rate
+                    (session-last pageview) for top landing pages</figcaption>
+      </figure>
+    </section>
+
+    <!-- ── Table: Top Pages Detail ───────────────────────────────────────── -->
+    <section aria-labelledby="topdetail-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="topdetail-heading">Top Pages — Detailed</h2>
+      </header>
+
+      <p id="perf-status" role="status">Loading…</p>
+
+      <div class="table-scroll" id="topdetail-wrap" hidden>
+        <table class="perf-table"
+               aria-label="Detailed performance metrics for top pages">
+          <caption class="sr-only">Top pages ranked by view count with engagement metrics</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-col="rank">#</th>
+              <th scope="col" data-col="page">Page</th>
+              <th scope="col" data-col="views">Views</th>
+              <th scope="col" data-col="unique">Unique</th>
+              <th scope="col" data-col="avg_time">Avg. Time</th>
+              <th scope="col" data-col="entrances">Entrances</th>
+              <th scope="col" data-col="exits">Exits</th>
+              <th scope="col" data-col="errors">Errors</th>
+            </tr>
+          </thead>
+          <tbody id="topdetail-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Table: Underperforming Pages ──────────────────────────────────── -->
+    <section aria-labelledby="underperf-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="underperf-heading">Underperforming Pages</h2>
+      </header>
+
+      <div class="table-scroll" id="underperf-wrap" hidden>
+        <table class="perf-table"
+               aria-label="Pages with high impressions but low engagement">
+          <caption class="sr-only">Pages flagged for high bounce rate, low time on page, or JS errors</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-col="page">Page</th>
+              <th scope="col" data-col="views">Views</th>
+              <th scope="col" data-col="bounce">Bounce Rate</th>
+              <th scope="col" data-col="avg_time">Avg. Time</th>
+              <th scope="col" data-col="js_errors">JS Errors (unique)</th>
+              <th scope="col" data-col="action">Suggested Action</th>
+            </tr>
+          </thead>
+          <tbody id="underperf-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Tier 3: Device Segmentation ───────────────────────────────────── -->
+    <section aria-labelledby="device-heading" class="device-section">
+      <header class="section-header">
+        <h2 id="device-heading">Performance by Device</h2>
+        <p class="section-sub">Average LCP segmented by device type — from real-user technographic data</p>
+      </header>
+      <div class="device-grid">
+        <div class="device-card" data-device="mobile">
+          <div class="device-icon">📱</div>
+          <div class="device-label">Mobile</div>
+          <div class="device-lcp">LCP <span class="device-lcp-val">—</span></div>
+          <div class="device-sessions"><span class="device-session-count">0</span> sessions</div>
+        </div>
+        <div class="device-card" data-device="tablet">
+          <div class="device-icon">🖥️</div>
+          <div class="device-label">Tablet</div>
+          <div class="device-lcp">LCP <span class="device-lcp-val">—</span></div>
+          <div class="device-sessions"><span class="device-session-count">0</span> sessions</div>
+        </div>
+        <div class="device-card" data-device="desktop">
+          <div class="device-icon">💻</div>
+          <div class="device-label">Desktop</div>
+          <div class="device-lcp">LCP <span class="device-lcp-val">—</span></div>
+          <div class="device-sessions"><span class="device-session-count">0</span> sessions</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Tier 3: Performance vs Engagement ─────────────────────────────── -->
+    <section aria-labelledby="conversion-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="conversion-heading">Performance vs Engagement</h2>
+        <p class="section-sub">Bounce rate segmented by LCP speed bucket — real-user data</p>
+      </header>
+      <div class="table-scroll">
+        <table class="perf-table" aria-label="Engagement rate by LCP speed segment">
+          <caption class="sr-only">Bounce rate grouped by LCP page load speed bucket</caption>
+          <thead>
+            <tr>
+              <th scope="col">Speed Bucket</th>
+              <th scope="col">LCP Range</th>
+              <th scope="col">Sessions</th>
+              <th scope="col">Bounce Rate</th>
+              <th scope="col">Avg LCP</th>
+              <th scope="col">Insight</th>
+            </tr>
+          </thead>
+          <tbody data-conversion-table>
+            <tr><td colspan="6" class="null-val" style="text-align:center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer role="contentinfo">
+    <p>Connected to <abbr title="DigitalOcean Droplet">DO</abbr> / Apache / MySQL;
+       Made with love by Team Ate (and Claude AI)</p>
+  </footer>
+
+  <script type="module" src="performance.js"></script>
+</body>
+</html>
