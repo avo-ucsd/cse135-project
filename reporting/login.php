@@ -1,3 +1,6 @@
+<?php
+$failed = isset($_GET['failed']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -125,7 +128,6 @@
         }
     </style>
 </head>
-
 <body>
     <header>
         <h1>Reporting</h1>
@@ -135,11 +137,13 @@
         <div class="login-section">
             <h2>Sign In</h2>
 
-            <div class="error-msg" id="error-msg" style="display:none;">
+            <?php if ($failed): ?>
+            <div class="error-msg">
                 Invalid username or password. Please try again.
             </div>
+            <?php endif; ?>
 
-            <form method="POST" action="/j_security_check">
+            <form method="POST" action="/auth.php">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="httpd_username" autocomplete="username" required>
@@ -156,11 +160,5 @@
     <footer>
         <p>Team Ate Moment</p>
     </footer>
-
-    <script>
-        if (new URLSearchParams(window.location.search).has('failed')) {
-            document.getElementById('error-msg').style.display = 'block';
-        }
-    </script>
 </body>
 </html>

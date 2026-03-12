@@ -142,12 +142,12 @@ function renderErrorTrendChart(errors) {
     ctx.lineTo(xScale(0), M.top + CH);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, M.top, 0, M.top + CH);
-    grad.addColorStop(0, 'rgba(248,113,113,0.25)');
-    grad.addColorStop(1, 'rgba(248,113,113,0.02)');
+    grad.addColorStop(0, 'rgba(80,36,146,0.26)');
+    grad.addColorStop(1, 'rgba(61,19,70,0.02)');
     ctx.fillStyle = grad; ctx.fill();
 
     // line
-    ctx.beginPath(); ctx.strokeStyle = '#f87171'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.strokeStyle = '#b94ff7'; ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     data.forEach((pt, i) => {
       const x = xScale(i), y = yScale(pt.value);
@@ -159,7 +159,7 @@ function renderErrorTrendChart(errors) {
     data.forEach((pt, i) => {
       const x = xScale(i), y = yScale(pt.value);
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#f87171'; ctx.fill();
+      ctx.fillStyle = '#b94ff7'; ctx.fill();
       ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
     });
 
@@ -171,15 +171,15 @@ function renderErrorTrendChart(errors) {
 
   function highlightPoint(index) {
     const x = xScale(index), y = yScale(data[index].value);
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(248,113,113,0.3)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(203,191,221,0.26)'; ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.moveTo(x, M.top); ctx.lineTo(x, M.top + CH); ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2);
     ctx.fillStyle = 'white'; ctx.fill();
-    ctx.strokeStyle = '#f87171'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.strokeStyle = '#b94ff7'; ctx.lineWidth = 2.5; ctx.stroke();
     ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#f87171'; ctx.fill();
+    ctx.fillStyle = '#b94ff7'; ctx.fill();
   }
 
   canvas.addEventListener('mousemove', e => {
@@ -277,7 +277,7 @@ function renderTopPagesChart(errors) {
       const x  = M.left + step * i + step / 2 - barW / 2;
       const bH = yScale(0) - yScale(values[i]);
       const y  = yScale(values[i]);
-      ctx.fillStyle = i === hi ? 'rgba(248,113,113,0.9)' : 'rgba(248,113,113,0.55)';
+      ctx.fillStyle = i === hi ? 'rgba(185,79,247,0.9)' : 'rgba(185,79,247,0.55)';
       ctx.beginPath(); ctx.roundRect(x, y, barW, bH, [4, 4, 0, 0]); ctx.fill();
       ctx.fillStyle = '#717a96'; ctx.font = '11px Arial';
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
