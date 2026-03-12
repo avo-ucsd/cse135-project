@@ -125,13 +125,8 @@
         }
     </style>
 </head>
-<script>
-    if (new URLSearchParams(window.location.search).has('failed')) {
-        document.getElementById('error-msg').style.display = 'block';
-    }
-</script>
-<body>
 
+<body>
     <header>
         <h1>Reporting</h1>
     </header>
@@ -162,5 +157,10 @@
         <p>Team Ate Moment</p>
     </footer>
 
+    <script>
+        if (new URLSearchParams(window.location.search).has('failed')) {
+            document.getElementById('error-msg').style.display = 'block';
+        }
+    </script>
 </body>
 </html>
