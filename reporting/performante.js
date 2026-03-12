@@ -268,6 +268,9 @@ function drawTopPagesBar(urlMap, metric, topN) {
 /** AbortController for trend chart mouse listeners — replaced on each redraw. */
 let trendAbort = null;
 
+/** AbortController for entry/exit bar chart mouse listeners — replaced on each redraw. */
+let entryExitAbort = null;
+
 /**
  * Draws a line chart of average daily time on page over the last 30 days.
  *
@@ -539,6 +542,9 @@ function drawEntryExitBar(urlMap, sessionMap) {
     const barW  = Math.floor(cW / top.length) - 10;
     const yScale = linearScale(0, 100, margin.top + cH, margin.top);
 
+    if (entryExitAbort) entryExitAbort.abort();
+    entryExitAbort = new AbortController();
+
     // Grid lines + Y labels (0–100%)
     for (let pct = 0; pct <= 100; pct += 20) {
     const y = yScale(pct);
@@ -589,12 +595,15 @@ function drawEntryExitBar(urlMap, sessionMap) {
 
     // Bars
     top.forEach((entry, i) => {
-    const x          = margin.left + i * (barW + 10) + 5;
-    const entryRate  = entry.views > 0 ? (entry.entrances / entry.views) * 100 : 0;
-    const exitRate   = entry.views > 0 ? (entry.exits     / entry.views) * 100 : 0;
-    const baseline   = margin.top + cH;
-    const entryH     = baseline - yScale(entryRate);
-    const exitH      = baseline - yScale(exitRate);
+    const x             = margin.left + i * (barW + 10) + 5;
+    const entryRate     = entry.views > 0 ? (entry.entrances / entry.views) * 100 : 0;
+    const exitRate      = entry.views > 0 ? (entry.exits     / entry.views) * 100 : 0;
+    // Clamp display values so the stacked bar never overflows the chart boundary
+    const entryRateDisp = Math.min(entryRate, 100);
+    const exitRateDisp  = Math.min(exitRate, Math.max(0, 100 - entryRateDisp));
+    const baseline      = margin.top + cH;
+    const entryH        = baseline - yScale(entryRateDisp);
+    const exitH         = baseline - yScale(exitRateDisp);
 
     // Entry segment (bottom, purple)
     ctx.fillStyle = '#b94ff7';
@@ -617,6 +626,54 @@ function drawEntryExitBar(urlMap, sessionMap) {
     ctx.fillText(short, 0, 0);
     ctx.restore();
     });
+
+    const tooltipEl = document.getElementById('entryexit-tooltip');
+
+    canvas.addEventListener('mousemove', e => {
+        if (!tooltipEl) return;
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width  / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const mx     = (e.clientX - rect.left) * scaleX;
+
+        let hi = -1;
+        top.forEach((_, i) => {
+            const barLeft  = margin.left + i * (barW + 10) + 5;
+            const barRight = barLeft + barW;
+            if (mx >= barLeft && mx <= barRight) hi = i;
+        });
+
+        if (hi >= 0) {
+            const entry      = top[hi];
+            const entryRate  = entry.views > 0 ? (entry.entrances / entry.views) * 100 : 0;
+            const exitRate   = entry.views > 0 ? (entry.exits     / entry.views) * 100 : 0;
+            const barCenterX = (margin.left + hi * (barW + 10) + 5 + barW / 2) / scaleX;
+            const topBarY    = yScale(Math.min(entryRate + exitRate, 100)) / scaleY;
+
+            tooltipEl.innerHTML =
+                `<strong>${escHtml(pathname(entry.url))}</strong><br>` +
+                `Views: ${entry.views.toLocaleString()}<br>` +
+                `Entry rate: ${entryRate.toFixed(1)}%<br>` +
+                `Exit rate: ${exitRate.toFixed(1)}%`;
+            tooltipEl.style.display = 'block';
+
+            const TOOLTIP_W = 170;
+            let tLeft = barCenterX - TOOLTIP_W / 2;
+            let tTop  = topBarY - 90;
+            if (tLeft < 0)                      tLeft = 0;
+            if (tLeft + TOOLTIP_W > rect.width) tLeft = rect.width - TOOLTIP_W;
+            if (tTop < 0)                       tTop  = topBarY + 10;
+            tooltipEl.style.left = `${tLeft}px`;
+            tooltipEl.style.top  = `${tTop}px`;
+        } else {
+            tooltipEl.style.display = 'none';
+        }
+    }, { signal: entryExitAbort.signal });
+
+    canvas.addEventListener('mouseleave', () => {
+        if (tooltipEl) tooltipEl.style.display = 'none';
+    }, { signal: entryExitAbort.signal });
+
 }
 
 // ── Table: Top Pages Detail ───────────────────────────────────────────────
