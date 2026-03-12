@@ -313,7 +313,7 @@ function renderTrafficChart(pageviews) {
 
     // Vertical guide line
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(203, 191, 221, 0.26)';
+    ctx.strokeStyle = 'rgb(161, 113, 232)';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.moveTo(x, margin.top);
