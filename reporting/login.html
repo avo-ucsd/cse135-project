@@ -158,7 +158,9 @@
     </footer>
 
     <script>
-        if (new URLSearchParams(window.location.search).has('failed')) {
+        const params = new URLSearchParams(window.location.search);
+        const referrer = document.referrer;
+        if (params.has('failed') && referrer.includes('j_security_check')) {
             document.getElementById('error-msg').style.display = 'block';
         }
     </script>
