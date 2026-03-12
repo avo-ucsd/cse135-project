@@ -143,7 +143,7 @@ $failed = isset($_GET['failed']);
             </div>
             <?php endif; ?>
 
-            <form method="POST" action="/j_security_check">
+            <form method="POST" action="/auth.php">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="httpd_username" autocomplete="username" required>
