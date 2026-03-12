@@ -1,4 +1,4 @@
-class SiteHeader extends HTMLElements {
+class SiteHeader extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
             <header role="banner">
