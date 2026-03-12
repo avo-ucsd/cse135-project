@@ -26,7 +26,9 @@ curl_setopt_array($ch, [
     CURLOPT_HEADER         => true,
     CURLOPT_SSL_VERIFYPEER => false,
     CURLOPT_SSL_VERIFYHOST => false,
-    // Forward the incoming cookies so Apache can set the session
+    CURLOPT_HTTPHEADER     => [
+        'Host: reporting.teamate.site',
+    ],
     CURLOPT_COOKIE         => $_SERVER['HTTP_COOKIE'] ?? '',
 ]);
 
