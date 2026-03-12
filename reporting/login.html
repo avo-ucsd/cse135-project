@@ -124,12 +124,12 @@
             text-align: center;
         }
     </style>
-    <script>
-        if (new URLSearchParams(window.location.search).has('failed')) {
-            document.getElementById('error-msg').style.display = 'block';
-        }
-    </script>
 </head>
+<script>
+    if (new URLSearchParams(window.location.search).has('failed')) {
+        document.getElementById('error-msg').style.display = 'block';
+    }
+</script>
 <body>
 
     <header>
