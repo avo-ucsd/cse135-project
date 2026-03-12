@@ -186,6 +186,9 @@ function drawTopPagesBar(urlMap, metric, topN) {
     return;
     }
 
+    if (topPagesBarAbort) topPagesBarAbort.abort();
+    topPagesBarAbort = new AbortController();
+
     const maxVal  = Math.max(...top.map(getValue));
     const xScale  = linearScale(0, maxVal || 1, 0, w);
     const barH    = Math.min(32, Math.floor(h / top.length) - 6);
@@ -261,9 +264,61 @@ function drawTopPagesBar(urlMap, metric, topN) {
     // Update figcaption
     const caption = document.getElementById('bar-caption');
     if (caption) caption.textContent = `Top ${topN} pages by ${metricLabel.toLowerCase()}`;
+
+    // Tooltip
+    const tooltipEl = document.getElementById('toppages-tooltip');
+
+    canvas.addEventListener('mousemove', e => {
+        if (!tooltipEl) return;
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width  / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const my     = (e.clientY - rect.top) * scaleY;
+
+        let hi = -1;
+        top.forEach((_, i) => {
+            const barTop    = startY + i * (barH + 6);
+            const barBottom = barTop + barH;
+            if (my >= barTop && my <= barBottom) hi = i;
+        });
+
+        if (hi >= 0) {
+            const entry  = top[hi];
+            const val    = getValue(entry);
+            const barTop = startY + hi * (barH + 6);
+            const barW   = xScale(val);
+
+            const barRightScreenX = (margin.left + barW) / scaleX;
+            const barMidScreenY   = (barTop + barH / 2) / scaleY;
+
+            tooltipEl.innerHTML =
+                `<strong>${escHtml(pathname(entry.url))}</strong><br>` +
+                `${metricLabel}: ${val.toLocaleString()}<br>` +
+                `Unique visitors: ${entry.sessions.size.toLocaleString()}`;
+            tooltipEl.style.display = 'block';
+
+            const TOOLTIP_W = 180;
+            let tLeft = barRightScreenX + 10;
+            let tTop  = barMidScreenY - 36;
+            if (tLeft + TOOLTIP_W > rect.width) tLeft = barRightScreenX - TOOLTIP_W - 10;
+            if (tLeft < 0)                      tLeft = 0;
+            if (tTop < 0)                       tTop  = barMidScreenY + 5;
+            tooltipEl.style.left = `${tLeft}px`;
+            tooltipEl.style.top  = `${tTop}px`;
+        } else {
+            tooltipEl.style.display = 'none';
+        }
+    }, { signal: topPagesBarAbort.signal });
+
+    canvas.addEventListener('mouseleave', () => {
+        if (tooltipEl) tooltipEl.style.display = 'none';
+    }, { signal: topPagesBarAbort.signal });
 }
 
 // ── Chart: Time-on-Page Trend (line) ─────────────────────────────────────
+
+/** AbortController for top-pages bar chart mouse listeners — replaced on each redraw. */
+let topPagesBarAbort = null;
 
 /** AbortController for trend chart mouse listeners — replaced on each redraw. */
 let trendAbort = null;
@@ -627,6 +682,8 @@ function drawEntryExitBar(urlMap, sessionMap) {
     ctx.restore();
     });
 
+
+    // Hovering tooltip
     const tooltipEl = document.getElementById('entryexit-tooltip');
 
     canvas.addEventListener('mousemove', e => {
