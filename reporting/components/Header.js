@@ -7,7 +7,7 @@ class SiteHeader extends HTMLElement {
                 <ul role="list">
                     <li><a href="index.html" aria-current="page">Dashboard</a></li>
                     <li><a href="engagement.html">User Engagement</a></li>
-                    <li><a href="performante.html">Performance</a></li>
+                    <li><a href="performance.html">Performance</a></li>
                     <li><a href="errors.html">Errors</a></li>
                     <li><a href="raw.html">Raw Data</a></li>
                     <!-- <li><a href="traffic.html">Traffic</a></li>
