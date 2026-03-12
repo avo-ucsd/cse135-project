@@ -37,16 +37,23 @@ $headers = substr($response, 0, $header_size);
 curl_close($ch);
 
 // Forward any Set-Cookie headers from Apache to the browser
-foreach (explode("\r\n", $headers) as $header) {
-    if (stripos($header, 'Set-Cookie:') === 0) {
-        header($header, false);
-    }
-}
+// foreach (explode("\r\n", $headers) as $header) {
+//     if (stripos($header, 'Set-Cookie:') === 0) {
+//         header($header, false);
+//     }
+// }
 
-// Apache returns 302 on success, anything else is a failure
-if ($http_code === 302) {
-    header('Location: /index.html');
-} else {
-    header('Location: /login.php?failed=1');
-}
+// // Apache returns 302 on success, anything else is a failure
+// if ($http_code === 302) {
+//     header('Location: /index.html');
+// } else {
+//     header('Location: /login.php?failed=1');
+// }
+// exit;
+curl_close($ch);
+
+echo "<pre>";
+echo "HTTP Code: $http_code\n";
+echo "Headers:\n$headers\n";
+echo "</pre>";
 exit;
