@@ -14,7 +14,7 @@ if (empty($username) || empty($password)) {
 }
 
 // Forward credentials to Apache's j_security_check internally
-$ch = curl_init('http://localhost/j_security_check');
+$ch = curl_init('https://localhost/j_security_check');
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => http_build_query([
@@ -25,6 +25,7 @@ curl_setopt_array($ch, [
     CURLOPT_FOLLOWLOCATION => false,
     CURLOPT_HEADER         => true,
     CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_SSL_VERIFYHOST => false,
     // Forward the incoming cookies so Apache can set the session
     CURLOPT_COOKIE         => $_SERVER['HTTP_COOKIE'] ?? '',
 ]);
