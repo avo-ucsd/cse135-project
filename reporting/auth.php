@@ -54,8 +54,25 @@ curl_close($ch);
 // exit;
 curl_close($ch);
 
-echo "<pre>";
-echo "HTTP Code: $http_code\n";
-echo "Headers:\n$headers\n";
-echo "</pre>";
+// Forward any Set-Cookie headers from Apache to the browser
+foreach (explode("\r\n", $headers) as $header) {
+    if (stripos($header, 'Set-Cookie:') === 0) {
+        header($header, false);
+    }
+}
+
+if ($http_code === 302) {
+    // Check where Apache is redirecting to
+    preg_match('/^Location: (.+)$/im', $headers, $matches);
+    $redirect = isset($matches[1]) ? trim($matches[1]) : '/index.html';
+    
+    // If Apache redirects to login, credentials were wrong
+    if (strpos($redirect, 'login') !== false) {
+        header('Location: /login.php?failed=1');
+    } else {
+        header('Location: /index.html');
+    }
+} else {
+    header('Location: /login.php?failed=1');
+}
 exit;
