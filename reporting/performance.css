@@ -43,6 +43,14 @@
     flex-wrap: wrap;
 }
 
+.time-filter,
+.page-filter {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-inline-size: 0;
+}
+
 .time-filter {
     display: flex;
     gap: 0;
@@ -97,6 +105,8 @@
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 1rem;
     margin-top: 1rem;
+    list-style: none;
+    padding: 0;
 }
 
 .vitals-controls {
@@ -215,6 +225,9 @@
     gap: 1.5rem;
     font-size: .82rem;
     color: var(--text-muted);
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
 .resource-summary strong { color: var(--text); }
@@ -224,6 +237,9 @@
     display: flex;
     flex-direction: column;
     gap: .55rem;
+    list-style: none;
+    padding: 0;
+    margin-bottom: 0;
 }
 
 .resource-row {
@@ -294,6 +310,8 @@
     gap: .6rem;
     flex-wrap: wrap;
     margin-bottom: .8rem;
+    list-style: none;
+    padding: 0;
 }
 
 .wf-swatch {
@@ -318,6 +336,7 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     font-size: .75rem;
+    margin: 0;
 }
 
 .waterfall-axis {
@@ -338,7 +357,11 @@
     white-space: nowrap;
 }
 
-.waterfall-rows { padding: 0; }
+.waterfall-rows {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
 
 .wf-row {
     display: grid;
@@ -472,6 +495,8 @@ td[data-col="page"] { max-width: 380px; }
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
     margin-top: 1rem;
+    list-style: none;
+    padding: 0;
 }
 
 .device-card {

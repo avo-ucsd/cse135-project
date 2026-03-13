@@ -588,7 +588,7 @@ function renderWaterfall(resources) {
     if (!axis || !container) return;
 
     if (resources.length === 0) {
-        container.innerHTML = '<p class="null-val" style="padding:1rem">No resource data available</p>';
+        container.innerHTML = '<li class="null-val" style="padding:1rem">No resource data available</li>';
         return;
     }
 
@@ -623,7 +623,7 @@ function renderWaterfall(resources) {
         const name   = r.name.split('/').pop().split('?')[0] || r.name.split('/').slice(-2).join('/');
         const left   = (r.startTime / totalMs) * 100;
         const width  = Math.max((r.duration / totalMs) * 100, 0.3);
-        const row    = document.createElement('div');
+        const row    = document.createElement('li');
         row.className = 'wf-row';
         row.innerHTML = `
             <span class="wf-name" title="${escHtml(r.name)}">${escHtml(name.length > 35 ? name.slice(0, 33) + '...' : name)}</span>

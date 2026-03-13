@@ -21,19 +21,21 @@
         <h1 id="page-title">Page Performance</h1>
         <p class="page-subtitle" id="filter-label">All Pages · Last 24 hours</p>
       </hgroup>
-      <div class="global-controls">
-        <div class="time-filter" role="group" aria-label="Time range">
+      <form class="global-controls" aria-label="Global filters">
+        <fieldset class="time-filter">
+          <legend class="sr-only">Time range</legend>
           <button class="time-btn active" data-days="1">1D</button>
           <button class="time-btn" data-days="7">7D</button>
           <button class="time-btn" data-days="30">30D</button>
-        </div>
-        <div class="page-filter">
+        </fieldset>
+        <fieldset class="page-filter">
+          <legend class="sr-only">Select page</legend>
           <label for="page-select" class="sr-only">Select page</label>
           <select id="page-select" aria-label="Select page">
             <option value="all">All Pages</option>
           </select>
-        </div>
-      </div>
+        </fieldset>
+      </form>
     </section>
 
     <!-- ── Tier 1: Core Web Vitals ──────────────────────────────────────── -->
@@ -43,158 +45,158 @@
           <h2 id="vitals-heading">Core Web Vitals</h2>
           <p class="section-sub">Statistic from real-user data · Live reading for current page load</p>
         </div>
-        <div class="perf-controls vitals-controls">
+        <form class="perf-controls vitals-controls" aria-label="Vital statistic">
           <label for="vital-stat-select">Stat</label>
           <select id="vital-stat-select" aria-label="Select vital statistic">
             <option value="p50">P50</option>
             <option value="p75" selected>P75</option>
             <option value="p90">P90</option>
           </select>
-        </div>
+        </form>
       </header>
-      <div class="vitals-grid">
+      <ul class="vitals-grid" role="list">
 
-        <div class="vital-card" data-vital="LCP">
-          <div class="vital-header">
+        <li class="vital-card" data-vital="LCP">
+          <header class="vital-header">
             <span class="vital-name">LCP</span>
             <span class="vital-full">Largest Contentful Paint</span>
-          </div>
-          <div class="vital-body">
+          </header>
+          <p class="vital-body">
             <span class="vital-value">—</span>
             <span class="vital-unit">ms</span>
-          </div>
-          <div class="vital-status">Waiting…</div>
-          <div class="vital-meta">
+          </p>
+          <p class="vital-status">Waiting…</p>
+          <p class="vital-meta">
             <span data-vital-samples>Samples: —</span>
-          </div>
+          </p>
           <canvas class="vital-spark" data-spark="LCP" width="120" height="28" aria-hidden="true"></canvas>
           <div class="perf-tooltip vital-tooltip" data-vital-tooltip="LCP"></div>
-          <div class="vital-threshold">Good &lt; 2500ms · Poor &gt; 4000ms</div>
-        </div>
+          <p class="vital-threshold">Good &lt; 2500ms · Poor &gt; 4000ms</p>
+        </li>
 
-        <div class="vital-card" data-vital="INP">
-          <div class="vital-header">
+        <li class="vital-card" data-vital="INP">
+          <header class="vital-header">
             <span class="vital-name">INP</span>
             <span class="vital-full">Interaction to Next Paint</span>
-          </div>
-          <div class="vital-body">
+          </header>
+          <p class="vital-body">
             <span class="vital-value">—</span>
             <span class="vital-unit">ms</span>
-          </div>
-          <div class="vital-status">Waiting…</div>
-          <div class="vital-meta">
+          </p>
+          <p class="vital-status">Waiting…</p>
+          <p class="vital-meta">
             <span data-vital-samples>Samples: —</span>
-          </div>
+          </p>
           <canvas class="vital-spark" data-spark="INP" width="120" height="28" aria-hidden="true"></canvas>
           <div class="perf-tooltip vital-tooltip" data-vital-tooltip="INP"></div>
-          <div class="vital-threshold">Good &lt; 200ms · Poor &gt; 500ms</div>
-        </div>
+          <p class="vital-threshold">Good &lt; 200ms · Poor &gt; 500ms</p>
+        </li>
 
-        <div class="vital-card" data-vital="CLS">
-          <div class="vital-header">
+        <li class="vital-card" data-vital="CLS">
+          <header class="vital-header">
             <span class="vital-name">CLS</span>
             <span class="vital-full">Cumulative Layout Shift</span>
-          </div>
-          <div class="vital-body">
+          </header>
+          <p class="vital-body">
             <span class="vital-value">—</span>
             <span class="vital-unit"></span>
-          </div>
-          <div class="vital-status">Waiting…</div>
-          <div class="vital-meta">
+          </p>
+          <p class="vital-status">Waiting…</p>
+          <p class="vital-meta">
             <span data-vital-samples>Samples: —</span>
-          </div>
+          </p>
           <canvas class="vital-spark" data-spark="CLS" width="120" height="28" aria-hidden="true"></canvas>
           <div class="perf-tooltip vital-tooltip" data-vital-tooltip="CLS"></div>
-          <div class="vital-threshold">Good &lt; 0.1 · Poor &gt; 0.25</div>
-        </div>
+          <p class="vital-threshold">Good &lt; 0.1 · Poor &gt; 0.25</p>
+        </li>
 
-        <div class="vital-card" data-vital="FCP">
-          <div class="vital-header">
+        <li class="vital-card" data-vital="FCP">
+          <header class="vital-header">
             <span class="vital-name">FCP</span>
             <span class="vital-full">First Contentful Paint</span>
-          </div>
-          <div class="vital-body">
+          </header>
+          <p class="vital-body">
             <span class="vital-value">—</span>
             <span class="vital-unit">ms</span>
-          </div>
-          <div class="vital-status">Waiting…</div>
-          <div class="vital-meta">
+          </p>
+          <p class="vital-status">Waiting…</p>
+          <p class="vital-meta">
             <span data-vital-samples>Samples: —</span>
-          </div>
+          </p>
           <canvas class="vital-spark" data-spark="FCP" width="120" height="28" aria-hidden="true"></canvas>
           <div class="perf-tooltip vital-tooltip" data-vital-tooltip="FCP"></div>
-          <div class="vital-threshold">Good &lt; 1800ms · Poor &gt; 3000ms</div>
-        </div>
+          <p class="vital-threshold">Good &lt; 1800ms · Poor &gt; 3000ms</p>
+        </li>
 
-        <div class="vital-card" data-vital="TTFB">
-          <div class="vital-header">
+        <li class="vital-card" data-vital="TTFB">
+          <header class="vital-header">
             <span class="vital-name">TTFB</span>
             <span class="vital-full">Time to First Byte</span>
-          </div>
-          <div class="vital-body">
+          </header>
+          <p class="vital-body">
             <span class="vital-value">—</span>
             <span class="vital-unit">ms</span>
-          </div>
-          <div class="vital-status">Waiting…</div>
-          <div class="vital-meta">
+          </p>
+          <p class="vital-status">Waiting…</p>
+          <p class="vital-meta">
             <span data-vital-samples>Samples: —</span>
-          </div>
+          </p>
           <canvas class="vital-spark" data-spark="TTFB" width="120" height="28" aria-hidden="true"></canvas>
           <div class="perf-tooltip vital-tooltip" data-vital-tooltip="TTFB"></div>
-          <div class="vital-threshold">Good &lt; 800ms · Poor &gt; 1800ms</div>
-        </div>
+          <p class="vital-threshold">Good &lt; 800ms · Poor &gt; 1800ms</p>
+        </li>
 
-      </div>
+      </ul>
     </section>
 
     <!-- ── Tier 2: Resource Load Breakdown ──────────────────────────────── -->
     <section aria-labelledby="resources-heading" class="resources-section">
       <header class="section-header">
         <h2 id="resources-heading">Resource Load Breakdown</h2>
-        <div class="resource-summary">
-          <span>Requests: <strong data-total-reqs>—</strong></span>
-          <span>Total size: <strong data-total-size>—</strong></span>
-          <span>Cache hit rate: <strong data-cache-rate>—</strong></span>
-        </div>
+        <ul class="resource-summary" role="list">
+          <li>Requests: <strong data-total-reqs>—</strong></li>
+          <li>Total size: <strong data-total-size>—</strong></li>
+          <li>Cache hit rate: <strong data-cache-rate>—</strong></li>
+        </ul>
       </header>
-      <div class="resource-bars">
-        <div class="resource-row" data-resource-bar="JS">
+      <ul class="resource-bars" role="list">
+        <li class="resource-row" data-resource-bar="JS">
           <span class="resource-label">JavaScript</span>
           <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
           <span class="resource-pct">—</span>
           <span class="resource-size">—</span>
-        </div>
-        <div class="resource-row" data-resource-bar="CSS">
+        </li>
+        <li class="resource-row" data-resource-bar="CSS">
           <span class="resource-label">CSS</span>
           <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
           <span class="resource-pct">—</span>
           <span class="resource-size">—</span>
-        </div>
-        <div class="resource-row" data-resource-bar="Image">
+        </li>
+        <li class="resource-row" data-resource-bar="Image">
           <span class="resource-label">Images</span>
           <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
           <span class="resource-pct">—</span>
           <span class="resource-size">—</span>
-        </div>
-        <div class="resource-row" data-resource-bar="Font">
+        </li>
+        <li class="resource-row" data-resource-bar="Font">
           <span class="resource-label">Fonts</span>
           <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
           <span class="resource-pct">—</span>
           <span class="resource-size">—</span>
-        </div>
-        <div class="resource-row" data-resource-bar="API">
+        </li>
+        <li class="resource-row" data-resource-bar="API">
           <span class="resource-label">API / XHR</span>
           <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
           <span class="resource-pct">—</span>
           <span class="resource-size">—</span>
-        </div>
-        <div class="resource-row" data-resource-bar="Other">
+        </li>
+        <li class="resource-row" data-resource-bar="Other">
           <span class="resource-label">Other</span>
           <div class="resource-track"><div class="resource-fill" style="width:0%"></div></div>
           <span class="resource-pct">—</span>
           <span class="resource-size">—</span>
-        </div>
-      </div>
+        </li>
+      </ul>
     </section>
 
     <!-- ── Tier 2: Slowest Requests ─────────────────────────────────────── -->
@@ -229,27 +231,27 @@
         <h2 id="waterfall-heading">Request Waterfall</h2>
         <p class="section-sub">Top 20 resources by start time — current page load</p>
       </header>
-      <div class="waterfall-legend">
-        <span class="wf-swatch wf-js">JS</span>
-        <span class="wf-swatch wf-css">CSS</span>
-        <span class="wf-swatch wf-img">Image</span>
-        <span class="wf-swatch wf-font">Font</span>
-        <span class="wf-swatch wf-api">API</span>
-        <span class="wf-swatch wf-other">Other</span>
-      </div>
-      <div class="waterfall-wrap">
+      <ul class="waterfall-legend" role="list">
+        <li class="wf-swatch wf-js">JS</li>
+        <li class="wf-swatch wf-css">CSS</li>
+        <li class="wf-swatch wf-img">Image</li>
+        <li class="wf-swatch wf-font">Font</li>
+        <li class="wf-swatch wf-api">API</li>
+        <li class="wf-swatch wf-other">Other</li>
+      </ul>
+      <figure class="waterfall-wrap">
         <div class="waterfall-axis" data-waterfall-axis></div>
-        <div class="waterfall-rows" data-waterfall>
-          <p class="null-val" style="padding:1rem">Loading waterfall…</p>
-        </div>
-      </div>
+        <ol class="waterfall-rows" data-waterfall>
+          <li class="null-val" style="padding:1rem">Loading waterfall…</li>
+        </ol>
+      </figure>
     </section>
 
     <!-- ── Chart: Top Pages Bar ──────────────────────────────────────────── -->
     <section aria-labelledby="bar-heading" class="chart-section">
       <header class="section-header">
         <h2 id="bar-heading">Top Pages</h2>
-        <div class="perf-controls">
+        <form class="perf-controls" aria-label="Top pages controls">
           <label for="bar-metric-select">Metric</label>
           <select id="bar-metric-select">
             <option value="views" selected>Page Views</option>
@@ -261,7 +263,7 @@
             <option value="10" selected>10</option>
             <option value="20">20</option>
           </select>
-        </div>
+        </form>
       </header>
       <figure>
         <canvas id="topPagesChart" width="900" height="320"
@@ -276,12 +278,12 @@
     <section aria-labelledby="trend-heading" class="chart-section">
       <header class="section-header">
         <h2 id="trend-heading">Time-on-Page Trend</h2>
-        <div class="perf-controls">
+        <form class="perf-controls" aria-label="Trend controls">
           <label for="trend-page-select">Page</label>
           <select id="trend-page-select">
             <option value="">— all pages —</option>
           </select>
-        </div>
+        </form>
       </header>
       <figure>
         <canvas id="trendChart" width="900" height="280"
@@ -365,26 +367,26 @@
         <h2 id="device-heading">Performance by Device</h2>
         <p class="section-sub">Average LCP segmented by device type — from real-user technographic data</p>
       </header>
-      <div class="device-grid">
-        <div class="device-card" data-device="mobile">
-          <div class="device-icon">📱</div>
-          <div class="device-label">Mobile</div>
-          <div class="device-lcp">LCP <span class="device-lcp-val">—</span></div>
-          <div class="device-sessions"><span class="device-session-count">0</span> sessions</div>
-        </div>
-        <div class="device-card" data-device="tablet">
-          <div class="device-icon">🖥️</div>
-          <div class="device-label">Tablet</div>
-          <div class="device-lcp">LCP <span class="device-lcp-val">—</span></div>
-          <div class="device-sessions"><span class="device-session-count">0</span> sessions</div>
-        </div>
-        <div class="device-card" data-device="desktop">
-          <div class="device-icon">💻</div>
-          <div class="device-label">Desktop</div>
-          <div class="device-lcp">LCP <span class="device-lcp-val">—</span></div>
-          <div class="device-sessions"><span class="device-session-count">0</span> sessions</div>
-        </div>
-      </div>
+      <ul class="device-grid" role="list">
+        <li class="device-card" data-device="mobile">
+          <span class="device-icon" aria-hidden="true">📱</span>
+          <h3 class="device-label">Mobile</h3>
+          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
+          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
+        </li>
+        <li class="device-card" data-device="tablet">
+          <span class="device-icon" aria-hidden="true">🖥️</span>
+          <h3 class="device-label">Tablet</h3>
+          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
+          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
+        </li>
+        <li class="device-card" data-device="desktop">
+          <span class="device-icon" aria-hidden="true">💻</span>
+          <h3 class="device-label">Desktop</h3>
+          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
+          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
+        </li>
+      </ul>
     </section>
 
     <!-- ── Tier 3: Performance vs Engagement ─────────────────────────────── -->
