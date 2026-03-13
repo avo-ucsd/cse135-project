@@ -286,12 +286,10 @@ function bindSparklineTooltip(name, series, xStep) {
     canvas.addEventListener('mousemove', e => {
         const rect   = canvas.getBoundingClientRect();
         const scaleX = canvas.width  / rect.width;
-        const scaleY = canvas.height / rect.height;
         const mx     = (e.clientX - rect.left) * scaleX;
-        const my     = (e.clientY - rect.top) * scaleY;
 
         const idx = Math.round(mx / xStep);
-        if (idx < 0 || idx >= series.length || my < 0 || my > canvas.height) {
+        if (idx < 0 || idx >= series.length) {
             tooltipEl.style.display = 'none';
             return;
         }
@@ -311,11 +309,14 @@ function bindSparklineTooltip(name, series, xStep) {
         tooltipEl.style.display = 'block';
 
         const TOOLTIP_W = 160;
-        let tLeft = (mx / scaleX) + 10;
-        let tTop  = (my / scaleY) - 40;
-        if (tLeft + TOOLTIP_W > rect.width) tLeft = (mx / scaleX) - TOOLTIP_W - 10;
+        const baseLeft = (mx / scaleX) + 10;
+        const baseTop  = canvas.offsetTop + canvas.offsetHeight + 8;
+        let tLeft = baseLeft;
+        if (tLeft + TOOLTIP_W > canvas.offsetParent.clientWidth) {
+            tLeft = (mx / scaleX) - TOOLTIP_W - 10;
+        }
         if (tLeft < 0) tLeft = 0;
-        if (tTop < 0) tTop = (my / scaleY) + 12;
+        let tTop = baseTop;
         tooltipEl.style.left = `${tLeft}px`;
         tooltipEl.style.top  = `${tTop}px`;
     }, { signal: controller.signal });
