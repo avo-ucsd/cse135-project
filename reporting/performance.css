@@ -99,6 +99,10 @@
     margin-top: 1rem;
 }
 
+.vitals-controls {
+    margin-left: auto;
+}
+
 .vital-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -108,11 +112,13 @@
     flex-direction: column;
     gap: .3rem;
     transition: border-color .2s;
+    position: relative;
 }
 
 .vital-card.good { border-color: var(--positive); }
 .vital-card.warn { border-color: #f59e0b; }
 .vital-card.bad  { border-color: var(--negative); }
+.vital-card.empty { border-color: var(--border); }
 
 .vital-header {
     display: flex;
@@ -167,6 +173,26 @@
     margin-top: .2rem;
     width: 100%;
     height: 28px;
+}
+
+.vital-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: .5rem;
+    font-size: .68rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.vital-meta span {
+    white-space: nowrap;
+}
+
+.vital-tooltip {
+    font-size: .7rem;
+    padding: 6px 10px;
+    white-space: nowrap;
+    z-index: 20;
 }
 
 .vital-threshold {

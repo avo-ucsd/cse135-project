@@ -16,6 +16,7 @@ let cachedErrors      = [];
 let topPagesBarAbort = null;
 let trendAbort       = null;
 let entryExitAbort   = null;
+let sparklineAbortMap = new Map();
 
 //  API helper 
 
@@ -90,6 +91,13 @@ function p75(arr) {
     if (!arr.length) return null;
     const sorted = [...arr].sort((a, b) => a - b);
     return sorted[Math.floor(sorted.length * 0.75)];
+}
+
+function percentile(arr, p) {
+    if (!arr.length) return null;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor(sorted.length * p)));
+    return sorted[idx];
 }
 
 //  Error banner 
@@ -216,13 +224,19 @@ function buildAggregates(rows, sessionData) {
 
 function renderSparkline(name, history) {
     const canvas = document.querySelector(`[data-spark="${name}"]`);
-    if (!canvas || history.length < 2) return;
+    const values = history.map(point =>
+        typeof point === 'number' ? point : Number(point.value)
+    );
+    if (!canvas || values.length < 2) {
+        clearSparkline(name);
+        return;
+    }
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    const min = Math.min(...history);
-    const max = Math.max(...history);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
     const xStep = w / (history.length - 1);
     const yScale = max > min ? (v) => h - ((v - min) / (max - min)) * (h - 4) - 2 : () => h / 2;
 
@@ -230,15 +244,128 @@ function renderSparkline(name, history) {
     ctx.strokeStyle = '#b94ff7';
     ctx.lineWidth = 1.5;
     ctx.lineJoin = 'round';
-    history.forEach((v, i) => {
+    values.forEach((v, i) => {
         const x = i * xStep;
         const y = yScale(v);
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.stroke();
+
+    bindSparklineTooltip(name, history, xStep);
 }
 
-function renderVital(name, value, goodThreshold, poorThreshold, source) {
+function clearSparkline(name) {
+    const canvas = document.querySelector(`[data-spark="${name}"]`);
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    const tooltipEl = document.querySelector(`[data-vital-tooltip="${name}"]`);
+    if (tooltipEl) tooltipEl.style.display = 'none';
+
+    const controller = sparklineAbortMap.get(name);
+    if (controller) controller.abort();
+    sparklineAbortMap.delete(name);
+}
+
+function formatVitalValue(name, value) {
+    if (name === 'CLS') return Number(value).toFixed(3);
+    return fmtMs(value);
+}
+
+function bindSparklineTooltip(name, series, xStep) {
+    const canvas = document.querySelector(`[data-spark="${name}"]`);
+    const tooltipEl = document.querySelector(`[data-vital-tooltip="${name}"]`);
+    if (!canvas || !tooltipEl || series.length < 2) return;
+
+    const prior = sparklineAbortMap.get(name);
+    if (prior) prior.abort();
+    const controller = new AbortController();
+    sparklineAbortMap.set(name, controller);
+
+    canvas.addEventListener('mousemove', e => {
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width  / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const mx     = (e.clientX - rect.left) * scaleX;
+        const my     = (e.clientY - rect.top) * scaleY;
+
+        const idx = Math.round(mx / xStep);
+        if (idx < 0 || idx >= series.length || my < 0 || my > canvas.height) {
+            tooltipEl.style.display = 'none';
+            return;
+        }
+
+        const point = series[idx];
+        const value = typeof point === 'number' ? point : point.value;
+        const ts    = typeof point === 'number' ? null : point.ts;
+        const date  = ts ? new Date(ts) : null;
+        const dateStr = date && !isNaN(date)
+            ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+              ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : 'Current load';
+
+        tooltipEl.innerHTML =
+            `<strong>${escHtml(formatVitalValue(name, value))}</strong><br>` +
+            `${escHtml(dateStr)}`;
+        tooltipEl.style.display = 'block';
+
+        const TOOLTIP_W = 160;
+        let tLeft = (mx / scaleX) + 10;
+        let tTop  = (my / scaleY) - 40;
+        if (tLeft + TOOLTIP_W > rect.width) tLeft = (mx / scaleX) - TOOLTIP_W - 10;
+        if (tLeft < 0) tLeft = 0;
+        if (tTop < 0) tTop = (my / scaleY) + 12;
+        tooltipEl.style.left = `${tLeft}px`;
+        tooltipEl.style.top  = `${tTop}px`;
+    }, { signal: controller.signal });
+
+    canvas.addEventListener('mouseleave', () => {
+        tooltipEl.style.display = 'none';
+    }, { signal: controller.signal });
+}
+
+function setVitalMeta(name, samples, rangeLabel) {
+    const card = document.querySelector(`[data-vital="${name}"]`);
+    if (!card) return;
+    const samplesEl = card.querySelector('[data-vital-samples]');
+    const rangeEl   = card.querySelector('[data-vital-range]');
+    if (samplesEl) samplesEl.textContent = `Samples: ${samples.toLocaleString()}`;
+    if (rangeEl)   rangeEl.textContent   = `Range: ${rangeLabel}`;
+}
+
+function setVitalEmpty(name, message) {
+    const card = document.querySelector(`[data-vital="${name}"]`);
+    if (!card) return;
+    card.className = 'vital-card empty';
+    const valueEl = card.querySelector('.vital-value');
+    const statusEl = card.querySelector('.vital-status');
+    if (valueEl) valueEl.textContent = '—';
+    if (statusEl) statusEl.textContent = message;
+    clearSparkline(name);
+}
+
+function getRangeLabel() {
+    return filters.days === 1 ? 'Last 24 hours' : `Last ${filters.days} days`;
+}
+
+function buildSparklineSeries(vitalsData, field, maxPoints = 10) {
+    const rows = vitalsData
+        .map(v => ({ value: Number(v[field]), ts: v.client_timestamp }))
+        .filter(v => v.value > 0 && v.ts)
+        .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+
+    if (rows.length <= maxPoints) return rows;
+
+    const step = (rows.length - 1) / (maxPoints - 1);
+    const series = [];
+    for (let i = 0; i < maxPoints; i++) {
+        series.push(rows[Math.round(i * step)]);
+    }
+    return series;
+}
+
+function renderVital(name, value, goodThreshold, poorThreshold, source, history) {
     const card = document.querySelector(`[data-vital="${name}"]`);
     if (!card) return;
 
@@ -256,29 +383,61 @@ function renderVital(name, value, goodThreshold, poorThreshold, source) {
     card.querySelector('.vital-status').textContent =
         source ? `${statusText} · ${escHtml(source)}` : statusText;
 
-    // Persist sparkline history in sessionStorage
-    const key = `spark_${name}`;
-    const history = JSON.parse(sessionStorage.getItem(key) || '[]');
-    history.push(Number(value));
-    if (history.length > 10) history.shift();
-    sessionStorage.setItem(key, JSON.stringify(history));
-    renderSparkline(name, history);
+    if (Array.isArray(history) && history.length >= 2) {
+        renderSparkline(name, history);
+    }
 }
 
 function renderVitalsFromApiData(vitalsData) {
-    if (!vitalsData.length) return;
+    const rangeLabel = getRangeLabel();
+    if (!vitalsData.length) {
+        ['LCP', 'CLS', 'INP'].forEach(name => {
+            setVitalMeta(name, 0, rangeLabel);
+            setVitalEmpty(name, 'No data in range');
+        });
+        return;
+    }
+
+    const statSel = document.getElementById('vital-stat-select');
+    const statKey = statSel?.value ?? 'p75';
+    const statLabel = statKey.toUpperCase();
+    const statP = statKey === 'p50' ? 0.5 : statKey === 'p90' ? 0.9 : 0.75;
 
     const lcpVals = vitalsData.map(v => Number(v.vital_lcp)).filter(v => v > 0);
     const clsVals = vitalsData.map(v => Number(v.vital_cls)).filter(v => v >= 0 && !isNaN(v));
     const inpVals = vitalsData.map(v => Number(v.vital_inp)).filter(v => v > 0);
 
-    const lcpP75 = p75(lcpVals);
-    const clsP75 = p75(clsVals);
-    const inpP75 = p75(inpVals);
+    const lcpStat = percentile(lcpVals, statP);
+    const clsStat = percentile(clsVals, statP);
+    const inpStat = percentile(inpVals, statP);
 
-    if (lcpP75 != null) renderVital('LCP', lcpP75, 2500, 4000, `P75 · ${lcpVals.length} samples`);
-    if (clsP75 != null) renderVital('CLS', clsP75, 0.1, 0.25, `P75 · ${clsVals.length} samples`);
-    if (inpP75 != null) renderVital('INP', inpP75, 200, 500, `P75 · ${inpVals.length} samples`);
+    const lcpSeries = buildSparklineSeries(vitalsData, 'vital_lcp');
+    const clsSeries = buildSparklineSeries(vitalsData, 'vital_cls');
+    const inpSeries = buildSparklineSeries(vitalsData, 'vital_inp');
+
+    if (lcpStat != null) {
+        setVitalMeta('LCP', lcpVals.length, rangeLabel);
+        renderVital('LCP', lcpStat, 2500, 4000, `${statLabel} · ${lcpVals.length} samples`, lcpSeries);
+    } else {
+        setVitalMeta('LCP', 0, rangeLabel);
+        setVitalEmpty('LCP', 'No data in range');
+    }
+
+    if (clsStat != null) {
+        setVitalMeta('CLS', clsVals.length, rangeLabel);
+        renderVital('CLS', clsStat, 0.1, 0.25, `${statLabel} · ${clsVals.length} samples`, clsSeries);
+    } else {
+        setVitalMeta('CLS', 0, rangeLabel);
+        setVitalEmpty('CLS', 'No data in range');
+    }
+
+    if (inpStat != null) {
+        setVitalMeta('INP', inpVals.length, rangeLabel);
+        renderVital('INP', inpStat, 200, 500, `${statLabel} · ${inpVals.length} samples`, inpSeries);
+    } else {
+        setVitalMeta('INP', 0, rangeLabel);
+        setVitalEmpty('INP', 'No data in range');
+    }
 }
 
 function initCoreWebVitals() {
@@ -286,7 +445,10 @@ function initCoreWebVitals() {
     try {
         new PerformanceObserver((list) => {
             const fcp = list.getEntriesByName('first-contentful-paint')[0];
-            if (fcp) renderVital('FCP', fcp.startTime, 1800, 3000, 'Live');
+            if (fcp) {
+                setVitalMeta('FCP', 1, 'Current load');
+                renderVital('FCP', fcp.startTime, 1800, 3000, 'Live');
+            }
         }).observe({ type: 'paint', buffered: true });
     } catch {}
 
@@ -295,7 +457,10 @@ function initCoreWebVitals() {
         const nav = performance.getEntriesByType('navigation')[0];
         if (nav) {
             const ttfb = nav.responseStart - nav.requestStart;
-            if (ttfb >= 0) renderVital('TTFB', ttfb, 800, 1800, 'Live');
+            if (ttfb >= 0) {
+                setVitalMeta('TTFB', 1, 'Current load');
+                renderVital('TTFB', ttfb, 800, 1800, 'Live');
+            }
         }
     } catch {}
 
@@ -308,6 +473,7 @@ function initCoreWebVitals() {
                 const card = document.querySelector('[data-vital="LCP"]');
                 // Only update if still showing default state
                 if (card && card.querySelector('.vital-value').textContent === '-') {
+                    setVitalMeta('LCP', 1, 'Current load');
                     renderVital('LCP', lcp.startTime, 2500, 4000, 'Live');
                 }
             }
@@ -323,6 +489,7 @@ function initCoreWebVitals() {
             }
             const card = document.querySelector('[data-vital="CLS"]');
             if (card && card.querySelector('.vital-value').textContent === '-') {
+                setVitalMeta('CLS', 1, 'Current load');
                 renderVital('CLS', clsValue, 0.1, 0.25, 'Live');
             }
         }).observe({ type: 'layout-shift', buffered: true });
@@ -337,6 +504,7 @@ function initCoreWebVitals() {
                     maxInp = entry.duration;
                     const card = document.querySelector('[data-vital="INP"]');
                     if (card && card.querySelector('.vital-value').textContent === '-') {
+                        setVitalMeta('INP', 1, 'Current load');
                         renderVital('INP', maxInp, 200, 500, 'Live');
                     }
                 }
@@ -344,11 +512,7 @@ function initCoreWebVitals() {
         }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
     } catch {}
 
-    // Restore sparklines from sessionStorage
-    ['LCP', 'INP', 'CLS', 'FCP', 'TTFB'].forEach(name => {
-        const history = JSON.parse(sessionStorage.getItem(`spark_${name}`) || '[]');
-        if (history.length >= 2) renderSparkline(name, history);
-    });
+    // Sparklines are driven by filtered API data.
 }
 
 //  Tier 2: Resource Timing 
@@ -1479,6 +1643,7 @@ function bindFilterControls() {
     document.getElementById('bar-metric-select')?.addEventListener('change', () => refreshAllSections());
     document.getElementById('bar-topn-select')?.addEventListener('change',   () => refreshAllSections());
     document.getElementById('trend-page-select')?.addEventListener('change', () => refreshAllSections());
+    document.getElementById('vital-stat-select')?.addEventListener('change', () => refreshAllSections());
 }
 
 //  Init 

@@ -39,8 +39,18 @@
     <!-- ── Tier 1: Core Web Vitals ──────────────────────────────────────── -->
     <section aria-labelledby="vitals-heading" class="vitals-section">
       <header class="section-header">
-        <h2 id="vitals-heading">Core Web Vitals</h2>
-        <p class="section-sub">P75 from real-user data · Live reading for current page load</p>
+        <div>
+          <h2 id="vitals-heading">Core Web Vitals</h2>
+          <p class="section-sub">Statistic from real-user data · Live reading for current page load</p>
+        </div>
+        <div class="perf-controls vitals-controls">
+          <label for="vital-stat-select">Stat</label>
+          <select id="vital-stat-select" aria-label="Select vital statistic">
+            <option value="p50">P50</option>
+            <option value="p75" selected>P75</option>
+            <option value="p90">P90</option>
+          </select>
+        </div>
       </header>
       <div class="vitals-grid">
 
@@ -54,7 +64,12 @@
             <span class="vital-unit">ms</span>
           </div>
           <div class="vital-status">Waiting…</div>
+          <div class="vital-meta">
+            <span data-vital-samples>Samples: —</span>
+            <span data-vital-range>Range: —</span>
+          </div>
           <canvas class="vital-spark" data-spark="LCP" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="perf-tooltip vital-tooltip" data-vital-tooltip="LCP"></div>
           <div class="vital-threshold">Good &lt; 2500ms · Poor &gt; 4000ms</div>
         </div>
 
@@ -68,7 +83,12 @@
             <span class="vital-unit">ms</span>
           </div>
           <div class="vital-status">Waiting…</div>
+          <div class="vital-meta">
+            <span data-vital-samples>Samples: —</span>
+            <span data-vital-range>Range: —</span>
+          </div>
           <canvas class="vital-spark" data-spark="INP" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="perf-tooltip vital-tooltip" data-vital-tooltip="INP"></div>
           <div class="vital-threshold">Good &lt; 200ms · Poor &gt; 500ms</div>
         </div>
 
@@ -82,7 +102,12 @@
             <span class="vital-unit"></span>
           </div>
           <div class="vital-status">Waiting…</div>
+          <div class="vital-meta">
+            <span data-vital-samples>Samples: —</span>
+            <span data-vital-range>Range: —</span>
+          </div>
           <canvas class="vital-spark" data-spark="CLS" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="perf-tooltip vital-tooltip" data-vital-tooltip="CLS"></div>
           <div class="vital-threshold">Good &lt; 0.1 · Poor &gt; 0.25</div>
         </div>
 
@@ -96,7 +121,12 @@
             <span class="vital-unit">ms</span>
           </div>
           <div class="vital-status">Waiting…</div>
+          <div class="vital-meta">
+            <span data-vital-samples>Samples: —</span>
+            <span data-vital-range>Range: —</span>
+          </div>
           <canvas class="vital-spark" data-spark="FCP" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="perf-tooltip vital-tooltip" data-vital-tooltip="FCP"></div>
           <div class="vital-threshold">Good &lt; 1800ms · Poor &gt; 3000ms</div>
         </div>
 
@@ -110,7 +140,12 @@
             <span class="vital-unit">ms</span>
           </div>
           <div class="vital-status">Waiting…</div>
+          <div class="vital-meta">
+            <span data-vital-samples>Samples: —</span>
+            <span data-vital-range>Range: —</span>
+          </div>
           <canvas class="vital-spark" data-spark="TTFB" width="120" height="28" aria-hidden="true"></canvas>
+          <div class="perf-tooltip vital-tooltip" data-vital-tooltip="TTFB"></div>
           <div class="vital-threshold">Good &lt; 800ms · Poor &gt; 1800ms</div>
         </div>
 
