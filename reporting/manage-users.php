@@ -161,19 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roles'])) {
 </head>
 <body>
 
-  <header role="banner">
-    <nav aria-label="Primary navigation">
-      <a href="index.html" class="wordmark">Team <strong>Ate</strong></a>
-      <ul role="list">
-        <li><a href="index.html">Dashboard</a></li>
-        <li><a href="raw.html">Raw Data</a></li>
-        <li><a href="manage-users.php" aria-current="page">Manage Users</a></li>
-      </ul>
-      <form method="post" action="/logout" class="logout-form">
-        <button type="submit" class="btn-logout">Log out</button>
-      </form>
-    </nav>
-  </header>
+  <site-header></site-header>
 
   <main>
     <section class="page-header">
