@@ -326,13 +326,11 @@ function bindSparklineTooltip(name, series, xStep) {
     }, { signal: controller.signal });
 }
 
-function setVitalMeta(name, samples, rangeLabel) {
+function setVitalMeta(name, samples) {
     const card = document.querySelector(`[data-vital="${name}"]`);
     if (!card) return;
     const samplesEl = card.querySelector('[data-vital-samples]');
-    const rangeEl   = card.querySelector('[data-vital-range]');
     if (samplesEl) samplesEl.textContent = `Samples: ${samples.toLocaleString()}`;
-    if (rangeEl)   rangeEl.textContent   = `Range: ${rangeLabel}`;
 }
 
 function setVitalEmpty(name, message) {
@@ -344,10 +342,6 @@ function setVitalEmpty(name, message) {
     if (valueEl) valueEl.textContent = '—';
     if (statusEl) statusEl.textContent = message;
     clearSparkline(name);
-}
-
-function getRangeLabel() {
-    return filters.days === 1 ? 'Last 24 hours' : `Last ${filters.days} days`;
 }
 
 function buildSparklineSeries(vitalsData, field, maxPoints = 10) {
@@ -390,10 +384,9 @@ function renderVital(name, value, goodThreshold, poorThreshold, source, history)
 }
 
 function renderVitalsFromApiData(vitalsData) {
-    const rangeLabel = getRangeLabel();
     if (!vitalsData.length) {
         ['LCP', 'CLS', 'INP'].forEach(name => {
-            setVitalMeta(name, 0, rangeLabel);
+            setVitalMeta(name, 0);
             setVitalEmpty(name, 'No data in range');
         });
         return;
@@ -417,26 +410,26 @@ function renderVitalsFromApiData(vitalsData) {
     const inpSeries = buildSparklineSeries(vitalsData, 'vital_inp');
 
     if (lcpStat != null) {
-        setVitalMeta('LCP', lcpVals.length, rangeLabel);
+        setVitalMeta('LCP', lcpVals.length);
         renderVital('LCP', lcpStat, 2500, 4000, `${statLabel} · ${lcpVals.length} samples`, lcpSeries);
     } else {
-        setVitalMeta('LCP', 0, rangeLabel);
+        setVitalMeta('LCP', 0);
         setVitalEmpty('LCP', 'No data in range');
     }
 
     if (clsStat != null) {
-        setVitalMeta('CLS', clsVals.length, rangeLabel);
+        setVitalMeta('CLS', clsVals.length);
         renderVital('CLS', clsStat, 0.1, 0.25, `${statLabel} · ${clsVals.length} samples`, clsSeries);
     } else {
-        setVitalMeta('CLS', 0, rangeLabel);
+        setVitalMeta('CLS', 0);
         setVitalEmpty('CLS', 'No data in range');
     }
 
     if (inpStat != null) {
-        setVitalMeta('INP', inpVals.length, rangeLabel);
+        setVitalMeta('INP', inpVals.length);
         renderVital('INP', inpStat, 200, 500, `${statLabel} · ${inpVals.length} samples`, inpSeries);
     } else {
-        setVitalMeta('INP', 0, rangeLabel);
+        setVitalMeta('INP', 0);
         setVitalEmpty('INP', 'No data in range');
     }
 }
@@ -447,7 +440,7 @@ function initCoreWebVitals() {
         new PerformanceObserver((list) => {
             const fcp = list.getEntriesByName('first-contentful-paint')[0];
             if (fcp) {
-                setVitalMeta('FCP', 1, 'Current load');
+                setVitalMeta('FCP', 1);
                 renderVital('FCP', fcp.startTime, 1800, 3000, 'Live');
             }
         }).observe({ type: 'paint', buffered: true });
@@ -459,7 +452,7 @@ function initCoreWebVitals() {
         if (nav) {
             const ttfb = nav.responseStart - nav.requestStart;
             if (ttfb >= 0) {
-                setVitalMeta('TTFB', 1, 'Current load');
+                setVitalMeta('TTFB', 1);
                 renderVital('TTFB', ttfb, 800, 1800, 'Live');
             }
         }
@@ -474,7 +467,7 @@ function initCoreWebVitals() {
                 const card = document.querySelector('[data-vital="LCP"]');
                 // Only update if still showing default state
                 if (card && card.querySelector('.vital-value').textContent === '-') {
-                    setVitalMeta('LCP', 1, 'Current load');
+                    setVitalMeta('LCP', 1);
                     renderVital('LCP', lcp.startTime, 2500, 4000, 'Live');
                 }
             }
@@ -490,7 +483,7 @@ function initCoreWebVitals() {
             }
             const card = document.querySelector('[data-vital="CLS"]');
             if (card && card.querySelector('.vital-value').textContent === '-') {
-                setVitalMeta('CLS', 1, 'Current load');
+                setVitalMeta('CLS', 1);
                 renderVital('CLS', clsValue, 0.1, 0.25, 'Live');
             }
         }).observe({ type: 'layout-shift', buffered: true });
@@ -505,7 +498,7 @@ function initCoreWebVitals() {
                     maxInp = entry.duration;
                     const card = document.querySelector('[data-vital="INP"]');
                     if (card && card.querySelector('.vital-value').textContent === '-') {
-                        setVitalMeta('INP', 1, 'Current load');
+                        setVitalMeta('INP', 1);
                         renderVital('INP', maxInp, 200, 500, 'Live');
                     }
                 }
