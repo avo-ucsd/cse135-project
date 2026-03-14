@@ -74,6 +74,21 @@
   color: #b94ff7;
 }
 
+.report-delete {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #f87171;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+}
+
+.report-delete:hover {
+  background: rgba(248, 113, 113, 0.2);
+}
+
 .empty-state {
   color: #717a96;
   padding: 1rem;

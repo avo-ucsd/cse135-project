@@ -51,7 +51,7 @@ async function renderTable() {
 
   tbody.innerHTML = reports
     .map((r) => `
-      <tr data-url="${resolveOpenUrl(r)}" data-openable="${resolveOpenUrl(r) ? '1' : '0'}">
+      <tr data-id="${Number(r.id ?? 0)}" data-url="${resolveOpenUrl(r)}" data-openable="${resolveOpenUrl(r) ? '1' : '0'}">
         <td>${r.report_name ? r.report_name : 'Untitled report'}</td>
         <td><span class="report-pill">${r.category || 'Report'}</span></td>
         <td><span class="report-pill ${r.status === 'ready' ? 'status-ready' : 'status-pending'}">${r.status || 'pending'}</span></td>
@@ -59,6 +59,7 @@ async function renderTable() {
         <td>${resolveOpenUrl(r)
           ? `<a class="report-open" href="${resolveOpenUrl(r)}" target="_blank" rel="noopener">Open PDF</a>`
           : '<span class="report-open" aria-disabled="true">Pending Upload</span>'}</td>
+        <td><button class="report-delete" type="button" data-action="delete" data-id="${Number(r.id ?? 0)}">Delete</button></td>
       </tr>
     `)
     .join('');
@@ -67,8 +68,32 @@ async function renderTable() {
     row.addEventListener('click', (event) => {
       if (row.getAttribute('data-openable') !== '1') return;
       if (event.target.tagName.toLowerCase() === 'a') return;
+      if (event.target.closest('button[data-action="delete"]')) return;
       const url = row.getAttribute('data-url');
       if (url && url !== '#') window.location.href = url;
+    });
+  });
+
+  tbody.querySelectorAll('button[data-action="delete"][data-id]').forEach((btn) => {
+    btn.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      const id = Number(btn.dataset.id);
+      if (!id) return;
+
+      const ok = window.confirm('Delete this report? This will also remove the uploaded PDF from server storage.');
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`${BASE}/reports/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        await renderTable();
+      } catch (err) {
+        console.error('[reports] delete failed', err);
+        window.alert('Failed to delete report.');
+      }
     });
   });
 }
