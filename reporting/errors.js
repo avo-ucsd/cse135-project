@@ -1,6 +1,6 @@
 /**
  * errors.js — Errors & Reliability analytics page
- * Data sources: /api/errors, /api/pageviews (total count only)
+ * Data sources: /api/errors, /api/pageviews (total count only), /api/sessions (UA lookup)
  */
 
 'use strict';
@@ -60,17 +60,20 @@ function detectDevice(ua) {
 }
 
 /** Extract error.type, error.message, browser, and device from the raw_payload JSON string. */
-function parsePayload(raw) {
+function parsePayload(raw, rowUserAgent = '') {
   try {
     const p  = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
-    const ua = p?.userAgent ?? p?.user_agent ?? '';
+    const ua = p?.userAgent ?? p?.user_agent ?? p?.technographics?.userAgent ?? rowUserAgent ?? '';
     return {
       type:    p?.error?.type    ?? '—',
       message: p?.error?.message ?? '—',
       browser: detectBrowser(ua),
       device:  detectDevice(ua),
     };
-  } catch { return { type: '—', message: '—', browser: 'Unknown', device: 'Unknown' }; }
+  } catch {
+    const ua = rowUserAgent ?? '';
+    return { type: '—', message: '—', browser: detectBrowser(ua), device: detectDevice(ua) };
+  }
 }
 
 // ── Time-range filter ─────────────────────────────────────────────────────────
@@ -448,7 +451,7 @@ function renderBrowserChart(errors) {
 
   const browserMap = new Map();
   for (const row of errors) {
-    const { browser } = parsePayload(row.raw_payload);
+    const { browser } = parsePayload(row.raw_payload, row.user_agent);
     // Normalize common browser names
     let b = String(browser ?? '—');
     if (/chrome/i.test(b) && !/edge|opr/i.test(b)) b = 'Chrome';
@@ -584,7 +587,7 @@ function renderDeviceChart(errors) {
 
   const deviceMap = new Map();
   for (const row of errors) {
-    const { device } = parsePayload(row.raw_payload);
+    const { device } = parsePayload(row.raw_payload, row.user_agent);
     deviceMap.set(device, (deviceMap.get(device) ?? 0) + Number(row.error_count ?? 1));
   }
 
@@ -679,7 +682,7 @@ function renderErrorLog(errors) {
   // Group by (type, page) and summarise
   const groups = new Map();
   for (const row of errors) {
-    const { type, message } = parsePayload(row.raw_payload);
+    const { type, message } = parsePayload(row.raw_payload, row.user_agent);
     const page = pathname(row.url ?? '');
     const key  = `${type}||${page}`;
     if (!groups.has(key)) {
@@ -747,7 +750,7 @@ function renderTopPagesTable(errors) {
     entry.count += Number(row.error_count ?? 1);
     if (!entry.last || (row.client_timestamp ?? '') > entry.last)
       entry.last = row.client_timestamp ?? '';
-    const { type } = parsePayload(row.raw_payload);
+    const { type } = parsePayload(row.raw_payload, row.user_agent);
     entry.types.set(type, (entry.types.get(type) ?? 0) + Number(row.error_count ?? 1));
   }
 
@@ -785,7 +788,7 @@ function renderRecommendations(errors) {
     if (!urlMap.has(url)) urlMap.set(url, { count: 0, types: new Map() });
     const entry = urlMap.get(url);
     entry.count += Number(row.error_count ?? 1);
-    const { type } = parsePayload(row.raw_payload);
+    const { type } = parsePayload(row.raw_payload, row.user_agent);
     entry.types.set(type, (entry.types.get(type) ?? 0) + Number(row.error_count ?? 1));
   }
 
@@ -845,7 +848,7 @@ function renderRecommendations(errors) {
   // ── Browser breakdown recommendation ─────────────────────
   const browserMap = new Map();
   for (const row of errors) {
-    const { browser } = parsePayload(row.raw_payload);
+    const { browser } = parsePayload(row.raw_payload, row.user_agent);
     let b = String(browser ?? '—');
     if (/chrome/i.test(b) && !/edge|opr/i.test(b)) b = 'Chrome';
     else if (/firefox/i.test(b)) b = 'Firefox';
@@ -917,12 +920,21 @@ function showError(msg) {
 
 async function init() {
   try {
-    const [errData, pvMeta] = await Promise.all([
+    const [errData, pvMeta, sessionsData] = await Promise.all([
       apiFetch('/errors'),
       apiFetch('/pageviews?limit=1'),
+      apiFetch('/sessions'),
     ]);
     const allErrors = errData.data ?? [];
     const pvTotal   = pvMeta.total  ?? 0;
+    const sessions  = sessionsData.data ?? [];
+    const uaBySession = new Map(sessions.map(s => [s.session_id, s.user_agent]));
+
+    allErrors.forEach(row => {
+      if (!row.user_agent && row.session_id) {
+        row.user_agent = uaBySession.get(row.session_id) ?? '';
+      }
+    });
 
     let activeRange = 30;
 
