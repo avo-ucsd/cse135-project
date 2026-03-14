@@ -964,16 +964,28 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate) {
     set('[data-cache-rate]', cacheRate + '%');
 }
 
-function renderSlowestRequests(resources) {
+function renderSlowestRequests(rows) {
     const tbody = document.querySelector('[data-slow-requests]');
     if (!tbody) return;
+
+    const resources = rows
+        .filter(r => r.event_type === 'resource')
+        .map(r => {
+            try {
+                return JSON.parse(r.raw_payload);
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean)
+        .flat();
 
     const sorted = [...resources]
         .sort((a, b) => b.duration - a.duration)
         .slice(0, 8);
 
     if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="null-val" style="text-align:center">No resource data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="null-val" style="text-align:center">No resource data available in collected data</td></tr>';
         return;
     }
 
@@ -995,17 +1007,30 @@ function renderSlowestRequests(resources) {
     }).join('');
 }
 
-function renderWaterfall(resources) {
+function renderWaterfall(rows) {
     const axis      = document.querySelector('[data-waterfall-axis]');
     const container = document.querySelector('[data-waterfall]');
     if (!axis || !container) return;
 
+    const resources = rows
+        .filter(r => r.event_type === 'resource')
+        .map(r => {
+            try {
+                return JSON.parse(r.raw_payload);
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean)
+        .flat();
+
     if (resources.length === 0) {
-        container.innerHTML = '<li class="null-val" style="padding:1rem">No resource data available</li>';
+        container.innerHTML = '<li class="null-val" style="padding:1rem">No resource data available in collected data</li>';
         return;
     }
 
-    const nav     = performance.getEntriesByType('navigation')[0];
+    const navEntry = rows.find(r => r.event_type === 'navigation');
+    const nav = navEntry ? JSON.parse(navEntry.raw_payload) : null;
     const pageEnd = nav
         ? Math.max(nav.loadEventEnd, ...resources.map(r => r.responseEnd))
         : Math.max(...resources.map(r => r.responseEnd));
@@ -1039,13 +1064,11 @@ function renderWaterfall(resources) {
         const row    = document.createElement('li');
         row.className = 'wf-row';
         row.innerHTML = `
-            <span class="wf-name" title="${escHtml(r.name)}">${escHtml(name.length > 35 ? name.slice(0, 33) + '...' : name)}</span>
+            <span class="wf-name" title="${escHtml(r.name)}">${escHtml(name)}</span>
             <div class="wf-bar-track">
-                <div class="wf-bar wf-${type.toLowerCase()}"
-                     style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%"
-                     title="${escHtml(r.name)}&#10;Start: ${Math.round(r.startTime)}ms&#10;Duration: ${Math.round(r.duration)}ms&#10;Type: ${type}"></div>
+                <div class="wf-bar" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${RESOURCE_COLORS[type] ?? '#717a96'}"></div>
             </div>
-            <span class="wf-dur">${Math.round(r.duration)}ms</span>
+            <span class="wf-dur">${Math.round(r.duration).toLocaleString()}ms</span>
         `;
         container.appendChild(row);
     });
@@ -1056,7 +1079,13 @@ function processResources() {
         setTimeout(() => {
             try {
                 const resources = performance.getEntriesByType('resource');
-                if (!resources.length) return;
+
+                if (!resources.length) {
+                    renderResourceBreakdown({}, {}, 0, 0);
+                    renderSlowestRequests([]);
+                    renderWaterfall([]);
+                    return;
+                }
 
                 const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
                 const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
@@ -1065,16 +1094,24 @@ function processResources() {
                 for (const r of resources) {
                     const type = getResourceType(r);
                     typeMap[type] = (typeMap[type] || 0) + 1;
-                    sizeMap[type] = (sizeMap[type] || 0) + (r.transferSize || 0);
-                    if (r.transferSize === 0 && r.decodedBodySize > 0) cached++;
+                    sizeMap[type] = (sizeMap[type] || 0) + (Number(r.transferSize) || 0);
+                    if (Number(r.transferSize) === 0 && Number(r.decodedBodySize) > 0) cached++;
                 }
 
-                const cacheRate = resources.length > 0
-                    ? Math.round((cached / resources.length) * 100) : 0;
+                const cacheRate = Math.round((cached / resources.length) * 100);
+
+                const rows = [];
+                const nav = performance.getEntriesByType('navigation')[0];
+                if (nav) {
+                    rows.push({ event_type: 'navigation', raw_payload: JSON.stringify(nav) });
+                }
+                for (const r of resources) {
+                    rows.push({ event_type: 'resource', raw_payload: JSON.stringify([r]) });
+                }
 
                 renderResourceBreakdown(typeMap, sizeMap, resources.length, cacheRate);
-                renderSlowestRequests(resources);
-                renderWaterfall(resources);
+                renderSlowestRequests(rows);
+                renderWaterfall(rows);
             } catch (e) {
                 console.warn('[performance] Resource Timing:', e);
             }
@@ -1196,6 +1233,16 @@ function renderGeographySegment(technoData) {
         </li>`;
     }).join('');
 
+    // Opportunity box: highlight the highest-session region
+    const oppBody = document.querySelector('[data-geo-opportunity]');
+    const oppBox  = oppBody ? oppBody.closest('[role="note"]') : null;
+    if (oppBody && oppBox && entries.length > 0) {
+        const top = entries[0];
+        const topShare = totalCount > 0 ? ((top.count / totalCount) * 100).toFixed(1) : '0';
+        oppBody.textContent = `${top.region} accounts for ${topShare}% of sessions. Consider edge caching and localised assets for this region.`;
+        oppBox.hidden = false;
+    }
+
     if (!tooltipEl) return;
 
     const bars = rowsEl.querySelectorAll('.wf-bar');
@@ -1248,6 +1295,25 @@ function renderDeviceSegment(technoData, vitalsData) {
         groups[device].push({ lcp });
     }
 
+    const total = groups.mobile.length + groups.tablet.length + groups.desktop.length;
+    const circumference = 2 * Math.PI * 30; // r=30 → ≈188.496
+
+    // Update donut arcs in SVG order: mobile → desktop → tablet
+    const donutOrder = ['mobile', 'desktop', 'tablet'];
+    let arcOffset = 0;
+    for (const device of donutOrder) {
+        const entries = groups[device];
+        const pct = total > 0 ? entries.length / total : 0;
+        const arc = pct * circumference;
+        const seg = document.querySelector(`[data-donut-device="${device}"]`);
+        if (seg) {
+            seg.style.strokeDasharray  = `${arc.toFixed(2)} ${circumference.toFixed(2)}`;
+            seg.style.strokeDashoffset = `${(-arcOffset).toFixed(2)}`;
+        }
+        arcOffset += arc;
+    }
+
+    // Update legend items
     for (const [device, entries] of Object.entries(groups)) {
         const card = document.querySelector(`[data-device="${device}"]`);
         if (!card) continue;
@@ -1257,11 +1323,11 @@ function renderDeviceSegment(technoData, vitalsData) {
             ? Math.round(lcpValues.reduce((a, b) => a + b, 0) / lcpValues.length)
             : null;
 
-        const lcpEl      = card.querySelector('.device-lcp-val');
-        const sessionEl  = card.querySelector('.device-session-count');
+        const lcpEl  = card.querySelector('.device-lcp-val');
+        const pctEl  = card.querySelector('.legend-pct');
 
-        if (lcpEl) lcpEl.textContent = avgLcp != null ? fmtMs(avgLcp) : '-';
-        if (sessionEl) sessionEl.textContent = entries.length.toLocaleString();
+        if (lcpEl) lcpEl.textContent = avgLcp != null ? fmtMs(avgLcp) : '—';
+        if (pctEl) pctEl.textContent = total > 0 ? `${Math.round(entries.length / total * 100)}%` : '—';
 
         // Color device card based on avg LCP
         card.classList.remove('good', 'warn', 'bad');
