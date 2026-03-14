@@ -569,15 +569,15 @@ function renderCohortTable(rows, granularity) {
 function renderSessionsTable(rows) {
   const tbody = document.getElementById('sessionsBody');
   if (!tbody) return;
-  const top = rows.slice(0, 30);
+  const top = rows.slice(0, 10);
   tbody.innerHTML = top.map((row) => `
     <tr>
       <td title="${escHtml(row.sessionId)}">${escHtml(row.sessionId.slice(0, 12))}...</td>
       <td>${escHtml(row.startISO.replace('T', ' ').slice(0, 19))}</td>
       <td>${fmtDuration(row.durationMs)}</td>
       <td>${row.pages.toLocaleString()}</td>
-      <td>${escHtml(`${row.device} / ${row.channel}`)}</td>
-      ${row.totalErrors > 0 ? `<td class="error-val">${row.totalErrors.toLocaleString()}</td>` : '<td>0</td>'}
+      <td>${row.pages === 1 ? 'Yes' : 'No'}</td>
+      <td>${escHtml(row.device)}</td>
     </tr>
   `).join('');
 }
@@ -608,6 +608,13 @@ function applyFilters() {
   );
   renderAggregation(state.filtered);
   renderSessionsTable(state.filtered);
+}
+
+function syncFiltersFromDOM() {
+  state.filters.browser = document.getElementById('filterBrowser')?.value ?? 'all';
+  state.filters.device = document.getElementById('filterDevice')?.value ?? 'all';
+  state.filters.channel = document.getElementById('filterChannel')?.value ?? 'all';
+  state.filters.country = document.getElementById('filterCountry')?.value ?? 'all';
 }
 
 function renderAggregation(rows) {
@@ -645,15 +652,12 @@ function bindEvents() {
     renderCohortTable(state.sessions, state.cohortGranularity);
   });
 
-  const form = document.getElementById('aggregationFilters');
-  form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    state.filters.browser = document.getElementById('filterBrowser')?.value ?? 'all';
-    state.filters.device = document.getElementById('filterDevice')?.value ?? 'all';
-    state.filters.channel = document.getElementById('filterChannel')?.value ?? 'all';
-    state.filters.country = document.getElementById('filterCountry')?.value ?? 'all';
-    applyFilters();
-  });
+  for (const id of ['filterBrowser', 'filterDevice', 'filterChannel', 'filterCountry']) {
+    document.getElementById(id)?.addEventListener('change', () => {
+      syncFiltersFromDOM();
+      applyFilters();
+    });
+  }
 
   document.getElementById('clearFilters')?.addEventListener('click', () => {
     state.filters = { browser: 'all', device: 'all', channel: 'all', country: 'all' };

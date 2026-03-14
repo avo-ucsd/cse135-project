@@ -1,6 +1,6 @@
 /**
  * errors.js — Errors & Reliability analytics page
- * Data sources: /api/errors, /api/pageviews (total count only)
+ * Data sources: /api/errors, /api/pageviews (total count only), /api/sessions (UA lookup)
  */
 
 'use strict';
@@ -40,17 +40,40 @@ function linearScale(domainMin, domainMax, rangeMin, rangeMax) {
   return fn;
 }
 
-/** Extract error.type, error.message, browser, and platform from the raw_payload JSON string. */
-function parsePayload(raw) {
+function detectBrowser(ua) {
+  if (!ua) return 'Unknown';
+  const u = ua.toLowerCase();
+  if (u.includes('edg/'))                              return 'Edge';
+  if (u.includes('opr/') || u.includes('opera'))      return 'Opera';
+  if (u.includes('firefox/'))                         return 'Firefox';
+  if (u.includes('safari/') && !u.includes('chrome/')) return 'Safari';
+  if (u.includes('chrome/'))                          return 'Chrome';
+  return 'Other';
+}
+
+function detectDevice(ua) {
+  if (!ua) return 'Unknown';
+  const u = ua.toLowerCase();
+  if (u.includes('ipad') || u.includes('tablet'))              return 'Tablet';
+  if (u.includes('mobile') || u.includes('android') || u.includes('iphone')) return 'Mobile';
+  return 'Desktop';
+}
+
+/** Extract error.type, error.message, browser, and device from the raw_payload JSON string. */
+function parsePayload(raw, rowUserAgent = '') {
   try {
-    const p = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+    const p  = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+    const ua = p?.userAgent ?? p?.user_agent ?? p?.technographics?.userAgent ?? rowUserAgent ?? '';
     return {
-      type:     p?.error?.type     ?? '—',
-      message:  p?.error?.message  ?? '—',
-      browser:  p?.browser         ?? p?.userAgent?.split('/')[0] ?? '—',
-      platform: p?.platform        ?? p?.os                       ?? '—',
+      type:    p?.error?.type    ?? '—',
+      message: p?.error?.message ?? '—',
+      browser: detectBrowser(ua),
+      device:  detectDevice(ua),
     };
-  } catch { return { type: '—', message: '—', browser: '—', platform: '—' }; }
+  } catch {
+    const ua = rowUserAgent ?? '';
+    return { type: '—', message: '—', browser: detectBrowser(ua), device: detectDevice(ua) };
+  }
 }
 
 // ── Time-range filter ─────────────────────────────────────────────────────────
@@ -428,7 +451,7 @@ function renderBrowserChart(errors) {
 
   const browserMap = new Map();
   for (const row of errors) {
-    const { browser } = parsePayload(row.raw_payload);
+    const { browser } = parsePayload(row.raw_payload, row.user_agent);
     // Normalize common browser names
     let b = String(browser ?? '—');
     if (/chrome/i.test(b) && !/edge|opr/i.test(b)) b = 'Chrome';
@@ -553,36 +576,29 @@ function renderBrowserChart(errors) {
   canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; draw(); });
 }
 
-// ── Errors by Platform chart ──────────────────────────────────────────────────
+// ── Errors by Device chart ────────────────────────────────────────────────────
 
-function renderPlatformChart(errors) {
-  const canvas  = document.getElementById('platformChart');
-  const tooltip = document.getElementById('platformTooltip');
+function renderDeviceChart(errors) {
+  const canvas  = document.getElementById('deviceChart');
+  const tooltip = document.getElementById('deviceTooltip');
   if (!canvas) return;
 
   const COLORS = ['#4f8ef7', '#b94ff7', '#f7a24f', '#4fd1f7', '#f74f7a', '#a8f74f'];
 
-  const platMap = new Map();
+  const deviceMap = new Map();
   for (const row of errors) {
-    const { platform } = parsePayload(row.raw_payload);
-    let p = String(platform ?? '—');
-    if (/windows/i.test(p))    p = 'Windows';
-    else if (/mac|osx/i.test(p)) p = 'macOS';
-    else if (/linux/i.test(p)) p = 'Linux';
-    else if (/android/i.test(p)) p = 'Android';
-    else if (/ios|iphone|ipad/i.test(p)) p = 'iOS';
-    else if (p === '—') p = 'Unknown';
-    platMap.set(p, (platMap.get(p) ?? 0) + Number(row.error_count ?? 1));
+    const { device } = parsePayload(row.raw_payload, row.user_agent);
+    deviceMap.set(device, (deviceMap.get(device) ?? 0) + Number(row.error_count ?? 1));
   }
 
-  const sorted = [...platMap.entries()].sort((a, b) => b[1] - a[1]);
+  const sorted = [...deviceMap.entries()].sort((a, b) => b[1] - a[1]);
   const total  = sorted.reduce((s, [, v]) => s + v, 0);
 
   if (!sorted.length || total === 0) {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#717a96'; ctx.font = '13px Arial';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('No platform data available', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('No device data available', canvas.width / 2, canvas.height / 2);
     return;
   }
 
@@ -599,7 +615,7 @@ function renderPlatformChart(errors) {
     // title
     ctx.fillStyle = '#e8eaf0'; ctx.font = 'bold 14px Arial, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText('Errors by Platform', canvas.width / 2, 10);
+    ctx.fillText('Errors by Device', canvas.width / 2, 10);
 
     const xMax = sorted[0][1] * 1.15;
     const xScale = linearScale(0, xMax, M.left, M.left + W);
@@ -666,7 +682,7 @@ function renderErrorLog(errors) {
   // Group by (type, page) and summarise
   const groups = new Map();
   for (const row of errors) {
-    const { type, message } = parsePayload(row.raw_payload);
+    const { type, message } = parsePayload(row.raw_payload, row.user_agent);
     const page = pathname(row.url ?? '');
     const key  = `${type}||${page}`;
     if (!groups.has(key)) {
@@ -734,7 +750,7 @@ function renderTopPagesTable(errors) {
     entry.count += Number(row.error_count ?? 1);
     if (!entry.last || (row.client_timestamp ?? '') > entry.last)
       entry.last = row.client_timestamp ?? '';
-    const { type } = parsePayload(row.raw_payload);
+    const { type } = parsePayload(row.raw_payload, row.user_agent);
     entry.types.set(type, (entry.types.get(type) ?? 0) + Number(row.error_count ?? 1));
   }
 
@@ -772,7 +788,7 @@ function renderRecommendations(errors) {
     if (!urlMap.has(url)) urlMap.set(url, { count: 0, types: new Map() });
     const entry = urlMap.get(url);
     entry.count += Number(row.error_count ?? 1);
-    const { type } = parsePayload(row.raw_payload);
+    const { type } = parsePayload(row.raw_payload, row.user_agent);
     entry.types.set(type, (entry.types.get(type) ?? 0) + Number(row.error_count ?? 1));
   }
 
@@ -832,7 +848,7 @@ function renderRecommendations(errors) {
   // ── Browser breakdown recommendation ─────────────────────
   const browserMap = new Map();
   for (const row of errors) {
-    const { browser } = parsePayload(row.raw_payload);
+    const { browser } = parsePayload(row.raw_payload, row.user_agent);
     let b = String(browser ?? '—');
     if (/chrome/i.test(b) && !/edge|opr/i.test(b)) b = 'Chrome';
     else if (/firefox/i.test(b)) b = 'Firefox';
@@ -904,12 +920,21 @@ function showError(msg) {
 
 async function init() {
   try {
-    const [errData, pvMeta] = await Promise.all([
+    const [errData, pvMeta, sessionsData] = await Promise.all([
       apiFetch('/errors'),
       apiFetch('/pageviews?limit=1'),
+      apiFetch('/sessions'),
     ]);
     const allErrors = errData.data ?? [];
     const pvTotal   = pvMeta.total  ?? 0;
+    const sessions  = sessionsData.data ?? [];
+    const uaBySession = new Map(sessions.map(s => [s.session_id, s.user_agent]));
+
+    allErrors.forEach(row => {
+      if (!row.user_agent && row.session_id) {
+        row.user_agent = uaBySession.get(row.session_id) ?? '';
+      }
+    });
 
     let activeRange = 30;
 
@@ -919,7 +944,7 @@ async function init() {
       renderErrorTrendChart(errors, days);
       renderTopPagesChart(errors);
       renderBrowserChart(errors);
-      renderPlatformChart(errors);
+      renderDeviceChart(errors);
       renderErrorLog(errors);
       renderTopPagesTable(errors);
       renderRecommendations(errors);
