@@ -45,7 +45,11 @@
           <h2 id="vitals-heading">Core Web Vitals</h2>
           <p class="section-sub">Statistic from real-user data · Live reading for current page load</p>
         </div>
-        <form class="perf-controls vitals-controls" aria-label="Vital statistic">
+        <form class="perf-controls vitals-controls" aria-label="Core Web Vitals controls">
+          <label for="vitals-page-select">Page</label>
+          <select id="vitals-page-select" aria-label="Select page for Core Web Vitals">
+            <option value="all">All Pages</option>
+          </select>
           <label for="vital-stat-select">Stat</label>
           <select id="vital-stat-select" aria-label="Select vital statistic">
             <option value="p50">P50</option>
@@ -147,6 +151,34 @@
         </li>
 
       </ul>
+
+      <div class="vitals-worst">
+        <header class="section-header vitals-subheader">
+          <div>
+            <h3>Worst Core Web Vitals Pages</h3>
+            <p class="section-sub">Top 5 pages with the highest composite score for the selected statistic</p>
+          </div>
+        </header>
+        <div class="table-scroll">
+          <table class="perf-table vitals-table" aria-label="Worst Core Web Vitals pages">
+            <caption class="sr-only">Top 5 pages ranked by composite Core Web Vitals score</caption>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Page</th>
+                <th scope="col">Score</th>
+                <th scope="col">LCP</th>
+                <th scope="col">INP</th>
+                <th scope="col">CLS</th>
+                <th scope="col">Samples</th>
+              </tr>
+            </thead>
+            <tbody id="vitals-worst-tbody">
+              <tr><td colspan="7" class="null-val" style="text-align:center">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- ── Tier 2: Resource Load Breakdown ──────────────────────────────── -->

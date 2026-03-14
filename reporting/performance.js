@@ -4,6 +4,15 @@ const BASE = '/api';
 
 //  Global filter state 
 const filters = { days: 1, page: 'all' };
+let vitalsPage = 'all';
+
+const VITAL_THRESHOLDS = {
+    LCP: { good: 2500, poor: 4000 },
+    INP: { good: 200, poor: 500 },
+    CLS: { good: 0.1, poor: 0.25 },
+};
+
+const VITAL_WEIGHTS = { LCP: 1, INP: 1, CLS: 1 };
 
 //  Cached API data (fetched once, re-filtered on every refresh) 
 let cachedRows        = [];
@@ -145,6 +154,14 @@ function getFilteredVitals(vitals) {
     });
 }
 
+function getTimeFilteredVitals(vitals) {
+    const co = cutoffMs();
+    return vitals.filter(v => {
+        const ts = new Date(v.client_timestamp).getTime();
+        return !isNaN(ts) ? ts >= co : true;
+    });
+}
+
 function getFilteredTechno(techno) {
     const co = cutoffMs();
     return techno.filter(t => {
@@ -273,6 +290,14 @@ function formatVitalValue(name, value) {
     return fmtMs(value);
 }
 
+function getVitalStatSelection() {
+    const statSel = document.getElementById('vital-stat-select');
+    const statKey = statSel?.value ?? 'p75';
+    const statLabel = statKey.toUpperCase();
+    const statP = statKey === 'p50' ? 0.5 : statKey === 'p90' ? 0.9 : 0.75;
+    return { statKey, statLabel, statP };
+}
+
 function bindSparklineTooltip(name, series, xStep) {
     const canvas = document.querySelector(`[data-spark="${name}"]`);
     const tooltipEl = document.querySelector(`[data-vital-tooltip="${name}"]`);
@@ -392,10 +417,7 @@ function renderVitalsFromApiData(vitalsData) {
         return;
     }
 
-    const statSel = document.getElementById('vital-stat-select');
-    const statKey = statSel?.value ?? 'p75';
-    const statLabel = statKey.toUpperCase();
-    const statP = statKey === 'p50' ? 0.5 : statKey === 'p90' ? 0.9 : 0.75;
+    const { statLabel, statP } = getVitalStatSelection();
 
     const lcpVals = vitalsData.map(v => Number(v.vital_lcp)).filter(v => v > 0);
     const clsVals = vitalsData.map(v => Number(v.vital_cls)).filter(v => v >= 0 && !isNaN(v));
@@ -432,6 +454,207 @@ function renderVitalsFromApiData(vitalsData) {
         setVitalMeta('INP', 0);
         setVitalEmpty('INP', 'No data in range');
     }
+}
+
+function normalizeVitalScore(value, goodThreshold, poorThreshold) {
+    if (value == null || !Number.isFinite(value)) return null;
+    if (value <= goodThreshold) return 0;
+    if (value >= poorThreshold) return 1;
+    return (value - goodThreshold) / (poorThreshold - goodThreshold);
+}
+
+function computeCompositeScore({ lcpStat, inpStat, clsStat }) {
+    const parts = [
+        { key: 'LCP', value: lcpStat },
+        { key: 'INP', value: inpStat },
+        { key: 'CLS', value: clsStat },
+    ];
+
+    let total = 0;
+    let weightSum = 0;
+    for (const part of parts) {
+        const thresholds = VITAL_THRESHOLDS[part.key];
+        if (!thresholds) continue;
+        const normalized = normalizeVitalScore(part.value, thresholds.good, thresholds.poor);
+        if (normalized == null) continue;
+        const weight = VITAL_WEIGHTS[part.key] ?? 1;
+        total += normalized * weight;
+        weightSum += weight;
+    }
+
+    return weightSum > 0 ? total / weightSum : null;
+}
+
+function buildVitalsPageStats(vitalsData) {
+    const { statP } = getVitalStatSelection();
+    const map = new Map();
+
+    for (const v of vitalsData) {
+        const url = v.url ?? '(unknown)';
+        if (!map.has(url)) {
+            map.set(url, {
+                url,
+                rows: [],
+                lcpVals: [],
+                inpVals: [],
+                clsVals: [],
+            });
+        }
+        const entry = map.get(url);
+        entry.rows.push(v);
+
+        const lcp = Number(v.vital_lcp);
+        const inp = Number(v.vital_inp);
+        const cls = Number(v.vital_cls);
+
+        if (lcp > 0) entry.lcpVals.push(lcp);
+        if (inp > 0) entry.inpVals.push(inp);
+        if (cls >= 0 && !isNaN(cls)) entry.clsVals.push(cls);
+    }
+
+    const entries = [];
+    for (const entry of map.values()) {
+        const lcpStat = percentile(entry.lcpVals, statP);
+        const inpStat = percentile(entry.inpVals, statP);
+        const clsStat = percentile(entry.clsVals, statP);
+
+        entries.push({
+            url: entry.url,
+            samples: entry.rows.length,
+            lcpStat,
+            inpStat,
+            clsStat,
+            lcpSeries: buildSparklineSeries(entry.rows, 'vital_lcp'),
+            inpSeries: buildSparklineSeries(entry.rows, 'vital_inp'),
+            clsSeries: buildSparklineSeries(entry.rows, 'vital_cls'),
+            score: computeCompositeScore({ lcpStat, inpStat, clsStat }),
+        });
+    }
+
+    return entries;
+}
+
+function getVitalsForPage(vitalsData, page) {
+    if (!page || page === 'all') return vitalsData;
+    return vitalsData.filter(v => v.url === page);
+}
+
+function populateVitalsPageSelect(entries) {
+    const sel = document.getElementById('vitals-page-select');
+    if (!sel) return;
+    const current = vitalsPage;
+    while (sel.options.length > 1) sel.remove(1);
+
+    const sorted = [...entries].sort((a, b) => {
+        const aScore = a.score ?? -1;
+        const bScore = b.score ?? -1;
+        return bScore - aScore || (b.samples - a.samples);
+    });
+
+    for (const entry of sorted) {
+        const opt = document.createElement('option');
+        opt.value = entry.url;
+        opt.textContent = pathname(entry.url);
+        if (opt.value === current) opt.selected = true;
+        sel.appendChild(opt);
+    }
+}
+
+function updateVitalsRowSelection(tbody, page) {
+    tbody.querySelectorAll('tr').forEach(row => {
+        const isSelected = row.dataset.page === page;
+        row.classList.toggle('is-selected', isSelected);
+    });
+}
+
+function renderVitalsWorstTable(entries, vitalsData) {
+    const tbody = document.getElementById('vitals-worst-tbody');
+    if (!tbody) return;
+
+    const scored = entries.filter(entry => entry.score != null);
+    const top = scored
+        .sort((a, b) => (b.score - a.score) || (b.samples - a.samples))
+        .slice(0, 5);
+
+    if (top.length === 0) {
+        tbody.innerHTML =
+            '<tr><td colspan="7" class="null-val" style="text-align:center">No Core Web Vitals data in the selected time range</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+
+    top.forEach((entry, i) => {
+        const scorePct = entry.score != null ? (entry.score * 100) : null;
+        const scoreText = scorePct != null ? scorePct.toFixed(1) : '-';
+        const scoreCls = scorePct == null ? 'null-val'
+            : scorePct >= 67 ? 'error-val'
+            : scorePct >= 34 ? 'warn-val'
+            : 'good-val';
+
+        const tr = document.createElement('tr');
+        tr.dataset.page = entry.url;
+        if (entry.url === vitalsPage) tr.classList.add('is-selected');
+
+        const tdRank = document.createElement('td');
+        tdRank.textContent = i + 1;
+        tdRank.style.color = 'var(--text-muted)';
+        tr.appendChild(tdRank);
+
+        const tdPage = document.createElement('td');
+        tdPage.dataset.col = 'page';
+        tdPage.textContent = pathname(entry.url);
+        tdPage.title = entry.url;
+        tr.appendChild(tdPage);
+
+        const tdScore = document.createElement('td');
+        tdScore.className = scoreCls;
+        tdScore.textContent = scoreText;
+        tr.appendChild(tdScore);
+
+        const tdLcp = document.createElement('td');
+        tdLcp.textContent = entry.lcpStat != null ? formatVitalValue('LCP', entry.lcpStat) : '-';
+        if (entry.lcpStat == null) tdLcp.className = 'null-val';
+        tr.appendChild(tdLcp);
+
+        const tdInp = document.createElement('td');
+        tdInp.textContent = entry.inpStat != null ? formatVitalValue('INP', entry.inpStat) : '-';
+        if (entry.inpStat == null) tdInp.className = 'null-val';
+        tr.appendChild(tdInp);
+
+        const tdCls = document.createElement('td');
+        tdCls.textContent = entry.clsStat != null ? formatVitalValue('CLS', entry.clsStat) : '-';
+        if (entry.clsStat == null) tdCls.className = 'null-val';
+        tr.appendChild(tdCls);
+
+        const tdSamples = document.createElement('td');
+        tdSamples.textContent = entry.samples.toLocaleString();
+        tr.appendChild(tdSamples);
+
+        tr.addEventListener('click', () => {
+            vitalsPage = entry.url;
+            const sel = document.getElementById('vitals-page-select');
+            if (sel) sel.value = vitalsPage;
+            renderVitalsFromApiData(getVitalsForPage(vitalsData, vitalsPage));
+            updateVitalsRowSelection(tbody, vitalsPage);
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+function refreshVitalsSection(vitalsData) {
+    const entries = buildVitalsPageStats(vitalsData);
+    populateVitalsPageSelect(entries);
+
+    if (vitalsPage !== 'all' && !entries.some(entry => entry.url === vitalsPage)) {
+        vitalsPage = 'all';
+        const sel = document.getElementById('vitals-page-select');
+        if (sel) sel.value = vitalsPage;
+    }
+
+    renderVitalsWorstTable(entries, vitalsData);
+    renderVitalsFromApiData(getVitalsForPage(vitalsData, vitalsPage));
 }
 
 function initCoreWebVitals() {
@@ -1580,6 +1803,7 @@ function refreshAllSections() {
     const filteredRows        = getFilteredRows(cachedRows);
     const filteredSessionData = getFilteredSessionData(cachedSessionData);
     const filteredVitals      = getFilteredVitals(cachedVitals);
+    const vitalsInRange        = getTimeFilteredVitals(cachedVitals);
     const filteredTechno      = getFilteredTechno(cachedTechno);
 
     const { urlMap, bounceSessions, sessionMap } =
@@ -1604,8 +1828,8 @@ function refreshAllSections() {
     populateTrendSelect(urlMap);
     populatePageSelect(urlMap);
 
-    // Tier 1: vitals P75 from API data
-    renderVitalsFromApiData(filteredVitals);
+    // Tier 1: vitals table + cards (time filter only)
+    refreshVitalsSection(vitalsInRange);
 
     // Tier 3
     renderDeviceSegment(filteredTechno, filteredVitals);
@@ -1631,6 +1855,11 @@ function bindFilterControls() {
     document.getElementById('page-select')?.addEventListener('change', e => {
         filters.page = e.target.value;
         refreshAllSections();
+    });
+
+    document.getElementById('vitals-page-select')?.addEventListener('change', e => {
+        vitalsPage = e.target.value;
+        refreshVitalsSection(getTimeFilteredVitals(cachedVitals));
     });
 
     // Chart controls (metric / topN / trend page)

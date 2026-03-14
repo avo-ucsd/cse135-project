@@ -113,6 +113,23 @@
     margin-left: auto;
 }
 
+.vitals-worst {
+    margin-top: 1.2rem;
+}
+
+.vitals-subheader h3 {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.vitals-table tbody tr {
+    cursor: pointer;
+}
+
+.vitals-table tbody tr.is-selected td {
+    background: rgba(185, 79, 247, .12);
+}
+
 .vital-card {
     background: var(--surface);
     border: 1px solid var(--border);
