@@ -313,31 +313,31 @@
         <article class="panel" aria-labelledby="seg-device-title">
           <h3 id="seg-device-title" class="panel-title">By Device</h3>
           <div class="device-seg-content">
-            <svg class="device-donut" viewBox="0 0 80 80" width="80" height="80" role="img" aria-label="Device traffic split: Mobile 60 percent, Desktop 36 percent, Tablet 4 percent">
+            <svg class="device-donut" viewBox="0 0 80 80" width="80" height="80" role="img" aria-label="Device traffic split by session share" data-device-donut>
               <circle class="donut-base" cx="40" cy="40" r="30"></circle>
-              <circle class="donut-segment donut-mobile" cx="40" cy="40" r="30"></circle>
-              <circle class="donut-segment donut-desktop" cx="40" cy="40" r="30"></circle>
-              <circle class="donut-segment donut-tablet" cx="40" cy="40" r="30"></circle>
+              <circle class="donut-segment donut-mobile" data-donut-device="mobile" cx="40" cy="40" r="30"></circle>
+              <circle class="donut-segment donut-desktop" data-donut-device="desktop" cx="40" cy="40" r="30"></circle>
+              <circle class="donut-segment donut-tablet" data-donut-device="tablet" cx="40" cy="40" r="30"></circle>
             </svg>
 
             <div class="device-legend" role="list" aria-label="Device legend">
-              <div class="legend-item" role="listitem">
+              <div class="legend-item" role="listitem" data-device="mobile">
                 <span class="legend-dot dot-mobile" aria-hidden="true"></span>
                 <span class="legend-name">Mobile</span>
-                <span class="legend-pct">60%</span>
-                <span class="legend-avg avg-mobile">1.28s</span>
+                <span class="legend-pct">—</span>
+                <span class="legend-avg device-lcp-val avg-mobile">—</span>
               </div>
-              <div class="legend-item" role="listitem">
+              <div class="legend-item" role="listitem" data-device="desktop">
                 <span class="legend-dot dot-desktop" aria-hidden="true"></span>
                 <span class="legend-name">Desktop</span>
-                <span class="legend-pct">36%</span>
-                <span class="legend-avg avg-desktop">1.42s</span>
+                <span class="legend-pct">—</span>
+                <span class="legend-avg device-lcp-val avg-desktop">—</span>
               </div>
-              <div class="legend-item" role="listitem">
+              <div class="legend-item" role="listitem" data-device="tablet">
                 <span class="legend-dot dot-tablet" aria-hidden="true"></span>
                 <span class="legend-name">Tablet</span>
-                <span class="legend-pct">4%</span>
-                <span class="legend-avg avg-tablet">2.31s</span>
+                <span class="legend-pct">—</span>
+                <span class="legend-avg device-lcp-val avg-tablet">—</span>
               </div>
             </div>
           </div>
@@ -345,32 +345,12 @@
 
         <article class="panel" aria-labelledby="seg-geo-title">
           <h3 id="seg-geo-title" class="panel-title">By Geography</h3>
-          <div class="geo-bars" role="list" aria-label="P75 LCP by region">
-            <div class="bar-row" role="listitem">
-              <span class="bar-label">US East</span>
-              <div class="bar-track"><div class="bar-fill fill-green" style="width:52%"></div></div>
-              <span class="bar-value value-green">1.3s</span>
-            </div>
-            <div class="bar-row" role="listitem">
-              <span class="bar-label">US West</span>
-              <div class="bar-track"><div class="bar-fill fill-amber" style="width:72%"></div></div>
-              <span class="bar-value value-amber">2.1s</span>
-            </div>
-            <div class="bar-row" role="listitem">
-              <span class="bar-label">Europe</span>
-              <div class="bar-track"><div class="bar-fill fill-amber" style="width:78%"></div></div>
-              <span class="bar-value value-amber">2.4s</span>
-            </div>
-            <div class="bar-row" role="listitem">
-              <span class="bar-label">Asia</span>
-              <div class="bar-track"><div class="bar-fill fill-red" style="width:94%"></div></div>
-              <span class="bar-value value-red">3.0s</span>
-            </div>
-          </div>
+          <p class="geo-seg-summary" data-geo-summary>Loading…</p>
+          <ul class="geo-seg-rows" data-geo-rows aria-label="Sessions by region"></ul>
 
-          <div class="opportunity-box" role="note" aria-label="Optimization opportunity">
-            <p class="opportunity-label">⚠ High-latency region</p>
-            <p class="opportunity-body">Asia P75 LCP is above 2.5s. Consider edge caching and lighter above-the-fold assets for APAC traffic.</p>
+          <div class="opportunity-box" role="note" aria-label="Optimization opportunity" hidden>
+            <p class="opportunity-label">High-traffic region</p>
+            <p class="opportunity-body" data-geo-opportunity></p>
           </div>
         </article>
       </div>
@@ -403,25 +383,118 @@
     </section>
 
     <!-- ── Tier 2: Request Waterfall ────────────────────────────────────── -->
-    <section aria-labelledby="waterfall-heading" class="chart-section waterfall-section">
-      <header class="section-header">
-        <h2 id="waterfall-heading">Request Waterfall</h2>
-        <p class="section-sub">Top 20 resources by start time — current page load</p>
-      </header>
-      <ul class="waterfall-legend" role="list">
-        <li class="wf-swatch wf-js">JS</li>
-        <li class="wf-swatch wf-css">CSS</li>
-        <li class="wf-swatch wf-img">Image</li>
-        <li class="wf-swatch wf-font">Font</li>
-        <li class="wf-swatch wf-api">API</li>
-        <li class="wf-swatch wf-other">Other</li>
-      </ul>
-      <figure class="waterfall-wrap">
-        <div class="waterfall-axis" data-waterfall-axis></div>
-        <ol class="waterfall-rows" data-waterfall>
-          <li class="null-val" style="padding:1rem">Loading waterfall…</li>
-        </ol>
-      </figure>
+    <section aria-labelledby="waterfall-heading" class="waterfall-section">
+      <div class="panel">
+
+        <!-- Panel header -->
+        <div class="wf-hdr-row">
+          <h2 id="waterfall-heading" class="wf-panel-title">Request Waterfall</h2>
+          <span class="panel-badge">Top 20 Resources</span>
+        </div>
+
+        <!-- Resource-type legend -->
+        <ul class="waterfall-legend" role="list">
+          <li class="wf-swatch wf-js">JS</li>
+          <li class="wf-swatch wf-css">CSS</li>
+          <li class="wf-swatch wf-img">Image</li>
+          <li class="wf-swatch wf-font">Font</li>
+          <li class="wf-swatch wf-api">API</li>
+          <li class="wf-swatch wf-other">Other</li>
+        </ul>
+
+        <figure class="waterfall-wrap">
+          <!-- Time axis — JS replaces inner spans with wf-tick elements at runtime -->
+          <div class="waterfall-axis" data-waterfall-axis>
+            <span>0ms</span>
+            <span>500ms</span>
+            <span>1000ms</span>
+            <span>1500ms</span>
+            <span>2000ms</span>
+          </div>
+
+          <!-- Waterfall rows — JS populates via [data-waterfall]; static rows shown as fallback -->
+          <ol class="waterfall-rows" data-waterfall>
+            <li class="wf-row">
+              <span class="wf-name">analytics.js</span>
+              <div class="wf-bar-track">
+                <div class="wf-bar wf-js" style="left:0%;width:28%">analytics.js</div>
+              </div>
+            </li>
+            <li class="wf-row">
+              <span class="wf-name">analytics.css</span>
+              <div class="wf-bar-track">
+                <div class="wf-bar wf-css" style="left:0%;width:14%">analytics.css</div>
+              </div>
+            </li>
+            <li class="wf-row">
+              <span class="wf-name">Syne-Variable.woff2</span>
+              <div class="wf-bar-track">
+                <div class="wf-bar wf-font" style="left:8%;width:21%">Syne-Variable</div>
+              </div>
+            </li>
+            <li class="wf-row">
+              <span class="wf-name">hero-banner.webp</span>
+              <div class="wf-bar-track">
+                <div class="wf-bar wf-image" style="left:12%;width:40%">hero-banner.webp</div>
+              </div>
+            </li>
+            <li class="wf-row">
+              <span class="wf-name">/api/metrics</span>
+              <div class="wf-bar-track">
+                <div class="wf-bar wf-api" style="left:20%;width:48%">/api/metrics</div>
+              </div>
+            </li>
+            <li class="wf-row">
+              <span class="wf-name">performance.js</span>
+              <div class="wf-bar-track">
+                <div class="wf-bar wf-js" style="left:2%;width:35%">performance.js</div>
+              </div>
+            </li>
+            <li class="wf-row">
+              <span class="wf-name">favicon.ico</span>
+              <div class="wf-bar-track">
+                <div class="wf-bar wf-other" style="left:3%;width:8%">favicon.ico</div>
+              </div>
+            </li>
+          </ol>
+        </figure>
+
+        <!-- Performance segment summary -->
+        <div class="wf-seg-wrap">
+          <table class="wf-seg-table" aria-label="Performance segment summary">
+            <caption class="sr-only">Page load performance segments — fast, medium, slow — with user share and conversion rates</caption>
+            <thead>
+              <tr>
+                <th scope="col">Segment</th>
+                <th scope="col">Users</th>
+                <th scope="col">Conv. Rate</th>
+                <th scope="col">vs Average</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="wf-seg-fast">
+                <td>Fast (&lt;1s)</td>
+                <td>34%</td>
+                <td>6.2%</td>
+                <td class="wf-vs-pos">+1.4%</td>
+              </tr>
+              <tr class="wf-seg-medium">
+                <td>Medium (1–3s)</td>
+                <td>51%</td>
+                <td>4.8%</td>
+                <td class="wf-vs-neutral">—</td>
+              </tr>
+              <tr class="wf-seg-slow">
+                <td>Slow (&gt;3s)</td>
+                <td>15%</td>
+                <td>2.1%</td>
+                <td class="wf-vs-neg">−2.7%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
     </section>
 
     <!-- ── Chart: Time-on-Page Trend ─────────────────────────────────────── -->

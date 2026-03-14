@@ -366,13 +366,47 @@
 .type-other { background: #717a96; color: var(--text); }
 
 /* ── Tier 2: Waterfall ───────────────────────────────────────────────── */
-.waterfall-section { padding: 1.5rem var(--gap); border-top: 1px solid var(--border); }
+.waterfall-section {
+    padding: 1.5rem var(--gap);
+    border-top: 1px solid var(--border);
+}
 
+/* Panel header row: title left, badge right */
+.wf-hdr-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.wf-panel-title {
+    margin: 0;
+    font-family: Syne, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    /* override .chart-section h2 uppercase/muted defaults */
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.panel-badge {
+    font-size: 10px;
+    background: rgba(0, 229, 255, 0.10);
+    color: #00e5ff;
+    border: 1px solid rgba(0, 229, 255, 0.20);
+    border-radius: 3px;
+    padding: 2px 8px;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+/* Legend */
 .waterfall-legend {
     display: flex;
-    gap: .6rem;
+    gap: .5rem;
     flex-wrap: wrap;
-    margin-bottom: .8rem;
+    margin-bottom: 12px;
     list-style: none;
     padding: 0;
 }
@@ -384,107 +418,194 @@
     letter-spacing: .04em;
     padding: .15rem .55rem;
     border-radius: 4px;
-    color: #0f1117;
 }
-.wf-swatch.wf-js    { background: #f59e0b; }
-.wf-swatch.wf-css   { background: #3b82f6; }
-.wf-swatch.wf-img   { background: #10b981; }
-.wf-swatch.wf-font  { background: #f87171; }
-.wf-swatch.wf-api   { background: #b94ff7; }
-.wf-swatch.wf-other { background: #717a96; color: var(--text); }
+.wf-swatch.wf-js    { background: var(--wf-js-bg);   color: var(--wf-js-clr);   border: 1px solid var(--wf-js-clr); }
+.wf-swatch.wf-css   { background: var(--wf-css-bg);  color: var(--wf-css-clr);  border: 1px solid var(--wf-css-clr); }
+.wf-swatch.wf-img   { background: var(--wf-img-bg);  color: var(--wf-img-clr);  border: 1px solid var(--wf-img-clr); }
+.wf-swatch.wf-font  { background: var(--wf-font-bg); color: var(--wf-font-clr); border: 1px solid var(--wf-font-clr); }
+.wf-swatch.wf-api   { background: var(--wf-api-bg);  color: var(--wf-api-clr);  border: 1px solid var(--wf-api-clr); }
+.wf-swatch.wf-other { background: var(--wf-oth-bg);  color: var(--wf-oth-clr);  border: 1px solid var(--wf-oth-clr); }
 
-.waterfall-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    font-size: .75rem;
-    margin: 0;
-}
+/* Waterfall figure wrapper */
+.waterfall-wrap { margin: 0; }
 
+/* Time axis */
 .waterfall-axis {
-    position: relative;
-    height: 26px;
-    background: var(--surface-alt);
-    border-bottom: 1px solid var(--border);
-    padding: 0 160px 0 160px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--seg-muted);
+    margin-bottom: 8px;
+    /* reset legacy positional styles */
+    position: static;
+    height: auto;
+    background: none;
+    border-bottom: none;
+    padding: 0;
 }
 
+/* JS-rendered axis ticks (absolute-positioned, added at runtime) */
 .wf-tick {
     position: absolute;
     top: 6px;
     transform: translateX(-50%);
-    color: var(--text-muted);
+    color: var(--seg-muted);
     font-size: .68rem;
     font-family: var(--font-mono);
     white-space: nowrap;
 }
 
+/* Row container */
 .waterfall-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     padding: 0;
     margin: 0;
     list-style: none;
 }
 
+/* Individual row */
 .wf-row {
     display: grid;
-    grid-template-columns: 160px 1fr 60px;
+    grid-template-columns: 130px 1fr auto;
     align-items: center;
-    border-bottom: 1px solid var(--border);
-    min-height: 26px;
+    gap: 8px;
+    border-bottom: none;
+    min-height: auto;
 }
 
-.wf-row:last-child { border-bottom: none; }
-.wf-row:hover { background: rgba(255,255,255,.02); }
+.wf-row:hover { background: transparent; }
 
+/* Label */
 .wf-name {
-    padding: 0 .5rem;
+    font-size: 10px;
+    color: var(--seg-muted);
+    text-align: right;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text-muted);
-    font-size: .72rem;
+    padding: 0;
 }
 
-.wf-bar-track {
+/* Track — also aliased as .wf-track for forward compatibility */
+.wf-bar-track,
+.wf-track {
     position: relative;
     height: 18px;
-    background: transparent;
+    background: var(--seg-track);
+    border-radius: 3px;
+    overflow: hidden;
 }
 
+/* Bar entry animation */
+@keyframes barIn {
+    from { width: 0; }
+}
+
+/* Bar */
 .wf-bar {
     position: absolute;
-    top: 2px;
-    height: 14px;
-    border-radius: 3px;
+    top: 0;
+    height: 100%;
+    border-radius: 2px;
     min-width: 2px;
-    cursor: default;
-    opacity: .85;
+    display: flex;
+    align-items: center;
+    padding-left: 6px;
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    animation: barIn 0.8s ease forwards;
 }
 
-.wf-bar.wf-js    { background: #f59e0b; }
-.wf-bar.wf-css   { background: #3b82f6; }
-.wf-bar.wf-image { background: #10b981; }
-.wf-bar.wf-font  { background: #f87171; }
-.wf-bar.wf-api   { background: #b94ff7; }
-.wf-bar.wf-other { background: #717a96; }
+/* Bar colours per resource type */
+.wf-bar.wf-js    { background: var(--wf-js-bg);   color: var(--wf-js-clr);   }
+.wf-bar.wf-css   { background: var(--wf-css-bg);  color: var(--wf-css-clr);  }
+.wf-bar.wf-image { background: var(--wf-img-bg);  color: var(--wf-img-clr);  }
+.wf-bar.wf-font  { background: var(--wf-font-bg); color: var(--wf-font-clr); }
+.wf-bar.wf-api   { background: var(--wf-api-bg);  color: var(--wf-api-clr);  }
+.wf-bar.wf-other { background: var(--wf-oth-bg);  color: var(--wf-oth-clr);  }
+
+/* Duration label (JS-generated, auto column) */
+.wf-dur {
+    font-size: 10px;
+    color: var(--seg-muted);
+    text-align: right;
+    white-space: nowrap;
+    padding: 0;
+}
+
+/* ── Waterfall: Performance segment summary table ────────────────────── */
+.wf-seg-wrap {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #1e2d3a;
+}
+
+.wf-seg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    color: var(--text);
+}
+
+.wf-seg-table thead th {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--seg-muted);
+    text-align: left;
+    padding: 0 8px 6px 0;
+    border-bottom: 1px solid rgba(30, 45, 58, 0.5);
+    font-weight: 600;
+}
+
+.wf-seg-table tbody td {
+    padding: 9px 8px 9px 0;
+    border-bottom: 1px solid rgba(30, 45, 58, 0.5);
+}
+
+.wf-seg-table tbody tr:last-child td { border-bottom: none; }
+
+.wf-seg-fast   td:first-child { color: var(--seg-green); }
+.wf-seg-slow   td:first-child { color: var(--seg-red);   }
+
+.wf-vs-pos     { color: var(--seg-green); font-weight: 600; }
+.wf-vs-neg     { color: var(--seg-red);   font-weight: 600; }
+.wf-vs-neutral { color: var(--seg-muted); }
+
+/* ── Tier 2 + 3: Panel & Waterfall variables ────────────────────────── */
+:root {
+    --seg-panel-bg:  #0d1318;
+    --seg-panel-border: #1e2d3a;
+    --seg-title:     #ffffff;
+    --seg-muted:     #4a6375;
+    --seg-light:     #d4e8f0;
+    --seg-cyan:      #00e5ff;
+    --seg-green:     #7fff6e;
+    --seg-amber:     #ffbe0b;
+    --seg-red:       #ff6b6b;
+    --seg-track:     #121920;
+    --seg-base:      #1e2d3a;
+    --seg-op-bg:     rgba(255, 107, 107, 0.06);
+    --seg-op-border: rgba(255, 107, 107, 0.2);
+    /* Waterfall bar colours */
+    --wf-js-bg:    rgba(255, 190,  11, 0.30);
+    --wf-js-clr:   #ffbe0b;
+    --wf-css-bg:   rgba(  0, 229, 255, 0.25);
+    --wf-css-clr:  #00e5ff;
+    --wf-img-bg:   rgba(127, 255, 110, 0.20);
+    --wf-img-clr:  #7fff6e;
+    --wf-font-bg:  rgba(192, 132, 252, 0.25);
+    --wf-font-clr: #c084fc;
+    --wf-api-bg:   rgba(255, 107, 107, 0.30);
+    --wf-api-clr:  #ff6b6b;
+    --wf-oth-bg:   rgba(100, 100, 100, 0.20);
+    --wf-oth-clr:  #4a6375;
+}
 
 /* ── Tier 3: Segmentation (HTML + CSS only) ────────────────────────── */
-:root {
-    --seg-panel-bg: #0d1318;
-    --seg-panel-border: #1e2d3a;
-    --seg-title: #ffffff;
-    --seg-muted: #4a6375;
-    --seg-light: #d4e8f0;
-    --seg-cyan: #00e5ff;
-    --seg-green: #7fff6e;
-    --seg-amber: #ffbe0b;
-    --seg-red: #ff6b6b;
-    --seg-track: #121920;
-    --seg-base: #1e2d3a;
-    --seg-op-bg: rgba(255, 107, 107, 0.06);
-    --seg-op-border: rgba(255, 107, 107, 0.2);
-}
 
 .segmentation-section {
     padding: 1.5rem var(--gap);
@@ -740,15 +861,6 @@
     z-index: 30;
     font-size: .72rem;
     line-height: 1.35;
-    white-space: nowrap;
-}
-
-.wf-dur {
-    padding-right: .5rem;
-    text-align: right;
-    color: var(--text-muted);
-    font-size: .68rem;
-    font-family: var(--font-mono);
     white-space: nowrap;
 }
 

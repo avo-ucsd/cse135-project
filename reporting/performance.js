@@ -1196,6 +1196,16 @@ function renderGeographySegment(technoData) {
         </li>`;
     }).join('');
 
+    // Opportunity box: highlight the highest-session region
+    const oppBody = document.querySelector('[data-geo-opportunity]');
+    const oppBox  = oppBody ? oppBody.closest('[role="note"]') : null;
+    if (oppBody && oppBox && entries.length > 0) {
+        const top = entries[0];
+        const topShare = totalCount > 0 ? ((top.count / totalCount) * 100).toFixed(1) : '0';
+        oppBody.textContent = `${top.region} accounts for ${topShare}% of sessions. Consider edge caching and localised assets for this region.`;
+        oppBox.hidden = false;
+    }
+
     if (!tooltipEl) return;
 
     const bars = rowsEl.querySelectorAll('.wf-bar');
@@ -1248,6 +1258,25 @@ function renderDeviceSegment(technoData, vitalsData) {
         groups[device].push({ lcp });
     }
 
+    const total = groups.mobile.length + groups.tablet.length + groups.desktop.length;
+    const circumference = 2 * Math.PI * 30; // r=30 → ≈188.496
+
+    // Update donut arcs in SVG order: mobile → desktop → tablet
+    const donutOrder = ['mobile', 'desktop', 'tablet'];
+    let arcOffset = 0;
+    for (const device of donutOrder) {
+        const entries = groups[device];
+        const pct = total > 0 ? entries.length / total : 0;
+        const arc = pct * circumference;
+        const seg = document.querySelector(`[data-donut-device="${device}"]`);
+        if (seg) {
+            seg.style.strokeDasharray  = `${arc.toFixed(2)} ${circumference.toFixed(2)}`;
+            seg.style.strokeDashoffset = `${(-arcOffset).toFixed(2)}`;
+        }
+        arcOffset += arc;
+    }
+
+    // Update legend items
     for (const [device, entries] of Object.entries(groups)) {
         const card = document.querySelector(`[data-device="${device}"]`);
         if (!card) continue;
@@ -1257,11 +1286,11 @@ function renderDeviceSegment(technoData, vitalsData) {
             ? Math.round(lcpValues.reduce((a, b) => a + b, 0) / lcpValues.length)
             : null;
 
-        const lcpEl      = card.querySelector('.device-lcp-val');
-        const sessionEl  = card.querySelector('.device-session-count');
+        const lcpEl  = card.querySelector('.device-lcp-val');
+        const pctEl  = card.querySelector('.legend-pct');
 
-        if (lcpEl) lcpEl.textContent = avgLcp != null ? fmtMs(avgLcp) : '-';
-        if (sessionEl) sessionEl.textContent = entries.length.toLocaleString();
+        if (lcpEl) lcpEl.textContent = avgLcp != null ? fmtMs(avgLcp) : '—';
+        if (pctEl) pctEl.textContent = total > 0 ? `${Math.round(entries.length / total * 100)}%` : '—';
 
         // Color device card based on avg LCP
         card.classList.remove('good', 'warn', 'bad');
