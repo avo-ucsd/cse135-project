@@ -1092,6 +1092,110 @@ function deriveDevice(vpWidth) {
     return 'desktop';
 }
 
+function getRegionHeuristic(timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, language = '') {
+    const tz = String(timeZone ?? '');
+    const lang = String(language ?? '').toLowerCase();
+
+    if (tz.startsWith('America/')) {
+        if (
+            tz.includes('Los_Angeles') ||
+            tz.includes('Denver') ||
+            tz.includes('Phoenix') ||
+            tz.includes('Anchorage') ||
+            tz.includes('Tijuana') ||
+            tz.includes('Vancouver')
+        ) {
+            return 'US West';
+        }
+        if (
+            tz.includes('Sao_Paulo') ||
+            tz.includes('Buenos_Aires') ||
+            tz.includes('Santiago') ||
+            tz.includes('Bogota') ||
+            tz.includes('Lima') ||
+            tz.includes('Caracas')
+        ) {
+            return 'South America';
+        }
+        return 'US East';
+    }
+    if (tz.startsWith('Europe/')) return 'Europe';
+    if (tz.startsWith('Asia/')) return 'Asia';
+    if (tz.startsWith('Africa/')) return 'Africa';
+    if (tz.startsWith('Australia/')) return 'Australia';
+
+    // Fallback: infer broad region from locale when timezone is unavailable.
+    if (/\b(es|pt)-(?:ar|bo|br|cl|co|ec|gy|pe|py|sr|uy|ve)\b/.test(lang)) return 'South America';
+    if (/\b(en|es|fr)-(?:za|ng|eg|ke|gh|ma|dz|tn)\b/.test(lang)) return 'Africa';
+    if (/\b(en)-(?:au|nz)\b/.test(lang)) return 'Australia';
+    if (/\b(en)-(?:us|ca)\b/.test(lang)) return 'US East';
+    if (/\b(en|fr|de|it|es|pt)-(?:gb|ie|fr|de|it|es|pt|nl|be|se|no|dk|fi|pl)\b/.test(lang)) return 'Europe';
+    if (/\b(zh|ja|ko|hi|th|vi|id|ms)\b/.test(lang)) return 'Asia';
+
+    return 'Other';
+}
+
+function renderGeographySegment(technoData) {
+    const rowsEl = document.querySelector('[data-geo-rows]');
+    const summaryEl = document.querySelector('[data-geo-summary]');
+    if (!rowsEl || !summaryEl) return;
+
+    const totals = new Map();
+    const sessionSeen = new Set();
+
+    for (const t of technoData) {
+        const sid = t.session_id ?? null;
+        if (sid && sessionSeen.has(sid)) continue;
+        if (sid) sessionSeen.add(sid);
+
+        const timeZone = t.timezone ?? t.time_zone ?? t.tz ?? '';
+        const region = getRegionHeuristic(timeZone, t.language);
+        totals.set(region, (totals.get(region) ?? 0) + 1);
+    }
+
+    const entries = [...totals.entries()]
+        .map(([region, count]) => ({ region, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8);
+
+    const totalCount = entries.reduce((sum, entry) => sum + entry.count, 0);
+
+    summaryEl.textContent = totalCount > 0
+        ? `${totalCount.toLocaleString()} sessions in selected range`
+        : 'No geography data in selected range';
+
+    if (!entries.length) {
+        rowsEl.innerHTML = '<li class="null-val" style="padding:1rem">No geography data available</li>';
+        return;
+    }
+
+    const maxCount = Math.max(...entries.map(entry => entry.count), 1);
+
+    rowsEl.innerHTML = entries.map(entry => {
+        const widthPct = Math.max((entry.count / maxCount) * 100, 3);
+        const sharePct = totalCount > 0 ? ((entry.count / totalCount) * 100) : 0;
+        const barClass = entry.region === 'US West' || entry.region === 'US East'
+            ? 'geo-americas'
+            : entry.region === 'Europe'
+                ? 'geo-europe'
+                : entry.region === 'Asia'
+                    ? 'geo-asia'
+                    : entry.region === 'Africa'
+                        ? 'geo-africa'
+                        : entry.region === 'Australia'
+                            ? 'geo-australia'
+                            : 'geo-other';
+
+        return `<li class="wf-row geo-row">
+            <span class="wf-name" title="${escHtml(entry.region)}">${escHtml(entry.region)}</span>
+            <div class="wf-bar-track">
+                <div class="wf-bar ${barClass}" style="left:0%;width:${widthPct.toFixed(2)}%" title="${escHtml(entry.region)}&#10;Sessions: ${entry.count.toLocaleString()}&#10;Share: ${sharePct.toFixed(1)}%"></div>
+            </div>
+            <span class="wf-dur">${entry.count.toLocaleString()} · ${sharePct.toFixed(1)}%</span>
+        </li>`;
+    }).join('');
+}
+
 function renderDeviceSegment(technoData, vitalsData) {
     const groups = { mobile: [], tablet: [], desktop: [] };
 
@@ -1152,10 +1256,10 @@ function renderConversionBySpeed(rows, sessionData) {
 
     // Buckets: fast (<2500), needs-work (2500-4000), poor (>4000), unknown
     const buckets = {
-        fast:       { label: 'Fast',          range: '< 2500ms', lcps: [], sessions: new Set() },
-        needs_work: { label: 'Needs Work',     range: '2500-4000ms', lcps: [], sessions: new Set() },
-        poor:       { label: 'Poor',           range: '> 4000ms', lcps: [], sessions: new Set() },
-        unknown:    { label: 'No LCP data',    range: '-',        lcps: [], sessions: new Set() },
+        fast:       { label: 'Fast',        range: '< 2500ms', lcps: [], sessions: new Set() },
+        needs_work: { label: 'Needs Work',  range: '2500-4000ms', lcps: [], sessions: new Set() },
+        poor:       { label: 'Poor',        range: '> 4000ms', lcps: [], sessions: new Set() },
+        unknown:    { label: 'No LCP data', range: '-',        lcps: [], sessions: new Set() },
     };
 
     for (const row of rows) {
@@ -1636,6 +1740,7 @@ function refreshAllSections() {
 
     // Tier 3
     renderDeviceSegment(filteredTechno, filteredVitals);
+    renderGeographySegment(filteredTechno);
     renderConversionBySpeed(filteredRows, filteredSessionData);
 
     updateFilterLabel();

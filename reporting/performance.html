@@ -303,6 +303,74 @@
       </div>
     </section>
 
+    <!-- ── Tier 3: Device Segmentation ───────────────────────────────────── -->
+    <section aria-labelledby="device-heading" class="device-section">
+      <header class="section-header">
+        <h2 id="device-heading">Performance by Device</h2>
+        <p class="section-sub">Average LCP segmented by device type — from real-user technographic data</p>
+      </header>
+      <ul class="device-grid" role="list">
+        <li class="device-card" data-device="mobile">
+          <span class="device-icon" aria-hidden="true">📱</span>
+          <h3 class="device-label">Mobile</h3>
+          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
+          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
+        </li>
+        <li class="device-card" data-device="tablet">
+          <span class="device-icon" aria-hidden="true">🖥️</span>
+          <h3 class="device-label">Tablet</h3>
+          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
+          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
+        </li>
+        <li class="device-card" data-device="desktop">
+          <span class="device-icon" aria-hidden="true">💻</span>
+          <h3 class="device-label">Desktop</h3>
+          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
+          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ── Tier 3: Segmentation by Geography ─────────────────────────────── -->
+    <section aria-labelledby="geo-heading" class="chart-section geo-section">
+      <header class="section-header">
+        <h2 id="geo-heading">Segmentation by Geography</h2>
+        <p class="section-sub">Region buckets inferred from timezone heuristics in technographic data</p>
+      </header>
+      <figure class="waterfall-wrap geo-wrap">
+        <div class="geo-summary" data-geo-summary>Loading geography data…</div>
+        <ol class="waterfall-rows" data-geo-rows>
+          <li class="null-val" style="padding:1rem">Loading geography segmentation…</li>
+        </ol>
+      </figure>
+    </section>
+
+    <!-- ── Tier 3: Performance vs Engagement ─────────────────────────────── -->
+    <section aria-labelledby="conversion-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="conversion-heading">Performance vs Engagement</h2>
+        <p class="section-sub">Bounce rate segmented by LCP speed bucket — real-user data</p>
+      </header>
+      <div class="table-scroll">
+        <table class="perf-table" aria-label="Engagement rate by LCP speed segment">
+          <caption class="sr-only">Bounce rate grouped by LCP page load speed bucket</caption>
+          <thead>
+            <tr>
+              <th scope="col">Speed Bucket</th>
+              <th scope="col">LCP Range</th>
+              <th scope="col">Sessions</th>
+              <th scope="col">Bounce Rate</th>
+              <th scope="col">Avg LCP</th>
+              <th scope="col">Insight</th>
+            </tr>
+          </thead>
+          <tbody data-conversion-table>
+            <tr><td colspan="6" class="null-val" style="text-align:center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- ── Tier 2: Request Waterfall ────────────────────────────────────── -->
     <section aria-labelledby="waterfall-heading" class="chart-section waterfall-section">
       <header class="section-header">
@@ -370,60 +438,6 @@
       </div>
     </section>
 
-    <!-- ── Tier 3: Device Segmentation ───────────────────────────────────── -->
-    <section aria-labelledby="device-heading" class="device-section">
-      <header class="section-header">
-        <h2 id="device-heading">Performance by Device</h2>
-        <p class="section-sub">Average LCP segmented by device type — from real-user technographic data</p>
-      </header>
-      <ul class="device-grid" role="list">
-        <li class="device-card" data-device="mobile">
-          <span class="device-icon" aria-hidden="true">📱</span>
-          <h3 class="device-label">Mobile</h3>
-          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
-          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
-        </li>
-        <li class="device-card" data-device="tablet">
-          <span class="device-icon" aria-hidden="true">🖥️</span>
-          <h3 class="device-label">Tablet</h3>
-          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
-          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
-        </li>
-        <li class="device-card" data-device="desktop">
-          <span class="device-icon" aria-hidden="true">💻</span>
-          <h3 class="device-label">Desktop</h3>
-          <p class="device-lcp">LCP <span class="device-lcp-val">—</span></p>
-          <p class="device-sessions"><span class="device-session-count">0</span> sessions</p>
-        </li>
-      </ul>
-    </section>
-
-    <!-- ── Tier 3: Performance vs Engagement ─────────────────────────────── -->
-    <section aria-labelledby="conversion-heading" class="table-section">
-      <header class="section-header">
-        <h2 id="conversion-heading">Performance vs Engagement</h2>
-        <p class="section-sub">Bounce rate segmented by LCP speed bucket — real-user data</p>
-      </header>
-      <div class="table-scroll">
-        <table class="perf-table" aria-label="Engagement rate by LCP speed segment">
-          <caption class="sr-only">Bounce rate grouped by LCP page load speed bucket</caption>
-          <thead>
-            <tr>
-              <th scope="col">Speed Bucket</th>
-              <th scope="col">LCP Range</th>
-              <th scope="col">Sessions</th>
-              <th scope="col">Bounce Rate</th>
-              <th scope="col">Avg LCP</th>
-              <th scope="col">Insight</th>
-            </tr>
-          </thead>
-          <tbody data-conversion-table>
-            <tr><td colspan="6" class="null-val" style="text-align:center">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
   </main>
 
   <footer role="contentinfo">
@@ -431,6 +445,7 @@
        Made with love by Team Ate (and Claude AI)</p>
   </footer>
 
+  <noscript>You don't have JS enabled, so this website will not work properly.</noscript>
   <script type="module" src="performance.js"></script>
 </body>
 </html>
