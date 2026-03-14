@@ -59,11 +59,33 @@
 }
 
 .button-link {
-  background: transparent;
-  border: 1px solid var(--border);
+  background: rgba(185, 79, 247, 0.18);
+  border: 1px solid rgba(185, 79, 247, 0.4);
+  color: #e8eaf0;
+  font-size: 0.8rem;
+  font-weight: 600;
   border-radius: var(--radius);
-  padding: 0.45rem 0.65rem;
+  padding: 0.42rem 0.7rem;
   cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.button-link:hover {
+  background: rgba(185, 79, 247, 0.32);
+  border-color: rgba(185, 79, 247, 0.6);
+}
+
+.report-actions .button-link {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #c0c8e0;
+}
+
+.report-actions .button-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #e8eaf0;
 }
 
 .filter-grid {
