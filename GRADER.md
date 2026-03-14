@@ -44,7 +44,7 @@ Login with credentials:
 - Password: dictator135
 
 Step-by-step:
-1. You have access to the Dashboard and Reports.
+1. You have access to the Dashboard, Reports, and Raw Data.
 2. Try clicking on "Manage Users". This will lead to a 403 error.
 3. Now, try editing the URL of the website to something nonsensical like "reporting.teamate.site/funky". This leads to a 404 error.
 4. Go to the "Reports" page.
@@ -52,7 +52,11 @@ Step-by-step:
 
 (See limitations at the end of the doc)
 
-## Limitations and Acknowledgements
+## Limitations, Acknowledgements, Concerns
+On architecture and bugs,
+- We heavily relied on vibecoding, so there are likely many concerns with the actual security of this analytics application. Due to the sheer amount of code quickly generated, it became easy for us to just accept it if it looks good on the surface.
+- For users of different roles, we should have limited the navigation bar to only pages that the user should only be able to see (e.g. viewer should only see Dashboard, Reports, and Raw Data). However, we do have 403 pages in place.
+
 On analyst notes/comments:
 - We did not account for race conditions. If people are editing the analyst notes box at the same time, the result is undeterministic, and we do not have measures to prevent that situation.
 - We do not limit comment CRUD operations to be done by the respective comment author. Therefore, they can be edited, deleted, and written by anyone.
