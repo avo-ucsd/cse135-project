@@ -36,6 +36,7 @@
  *   GET    /api/reports/{id}        - Single report by ID
  *   POST   /api/reports             - Create report metadata
  *   POST   /api/reports/{id}        - Upload PDF file for a report
+ *   DELETE /api/reports/{id}        - Delete report metadata and stored PDF
  */
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
@@ -830,6 +831,35 @@ switch ($resource) {
                         'file_url' => $publicUrl,
                     ]);
                 }
+                break;
+
+            case 'DELETE':
+                // DELETE /api/reports/{id}
+                $reportPk = requireId($id);
+
+                $reportStmt = $pdo->prepare(" 
+                    SELECT id, file_path
+                    FROM analyst_reports
+                    WHERE id = :id
+                ");
+                $reportStmt->execute([':id' => $reportPk]);
+                $reportRow = $reportStmt->fetch();
+                if (!$reportRow) respond(404, ['error' => "Report #$reportPk not found"]);
+
+                $filePath = (string)($reportRow['file_path'] ?? '');
+                if ($filePath !== '') {
+                    $realBase = realpath(__DIR__ . '/uploads/reports');
+                    $realFile = realpath($filePath);
+                    if ($realBase && $realFile && str_starts_with($realFile, $realBase) && is_file($realFile)) {
+                        @unlink($realFile);
+                    }
+                }
+
+                $del = $pdo->prepare("DELETE FROM analyst_reports WHERE id = :id");
+                $del->execute([':id' => $reportPk]);
+                if ($del->rowCount() === 0) respond(404, ['error' => "Report #$reportPk not found"]);
+
+                respond(200, ['status' => 'deleted', 'id' => (int)$reportPk]);
                 break;
 
             default:
