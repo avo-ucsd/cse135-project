@@ -181,6 +181,52 @@
       </div>
     </section>
 
+    <!-- ── Tier 1.5: Long Tasks ─────────────────────────────────────────── -->
+    <section aria-labelledby="longtasks-heading" class="longtasks-section">
+      <header class="section-header">
+        <div>
+          <h2 id="longtasks-heading">Main Thread Blocking (Long Tasks)</h2>
+          <p class="section-sub">Tasks over 50ms from historical data, with live browser fallback when needed</p>
+        </div>
+      </header>
+
+      <ul class="longtask-kpis" role="list">
+        <li class="longtask-card">
+          <p class="longtask-label">Impacted Sessions</p>
+          <p class="longtask-value" data-longtask-session-count>—</p>
+        </li>
+        <li class="longtask-card">
+          <p class="longtask-label">Avg Blocking / Impacted Session</p>
+          <p class="longtask-value" data-longtask-avg-blocking>—</p>
+        </li>
+        <li class="longtask-card">
+          <p class="longtask-label">Worst Single Task</p>
+          <p class="longtask-value" data-longtask-max-task>—</p>
+        </li>
+      </ul>
+
+      <p class="longtask-note" data-longtask-source>Waiting for long-task data…</p>
+
+      <div class="table-scroll">
+        <table class="perf-table" aria-label="Top pages by long task blocking time">
+          <caption class="sr-only">Pages ranked by long task impact</caption>
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Page</th>
+              <th scope="col">Sessions</th>
+              <th scope="col">Total Blocking</th>
+              <th scope="col">Avg Blocking</th>
+              <th scope="col">Worst Task</th>
+            </tr>
+          </thead>
+          <tbody data-longtask-rows>
+            <tr><td colspan="6" class="null-val" style="text-align:center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- ── Tier 2: Resource Load Breakdown ──────────────────────────────── -->
     <section aria-labelledby="resources-heading" class="resources-section">
       <header class="section-header">
