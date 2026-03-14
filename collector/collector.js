@@ -300,6 +300,25 @@
     };
   }
 
+  function getResourceTimings(limit = 250) {
+    const resources = performance.getEntriesByType('resource');
+    const entries = resources
+      .map((r) => ({
+        name: r.name,
+        initiatorType: r.initiatorType || 'other',
+        startTime: round(r.startTime || 0),
+        duration: round(r.duration || 0),
+        responseEnd: round(r.responseEnd || 0),
+        transferSize: Number(r.transferSize || 0),
+        encodedBodySize: Number(r.encodedBodySize || 0),
+        decodedBodySize: Number(r.decodedBodySize || 0)
+      }))
+      .filter((r) => r.name && (r.duration > 0 || r.transferSize > 0 || r.responseEnd > 0));
+
+    entries.sort((a, b) => b.duration - a.duration);
+    return entries.slice(0, limit);
+  }
+
   // Web Vitals
   /**
    * Initialize PerformanceObservers for Core Web Vitals.
@@ -631,6 +650,7 @@
       technographics: getTechnographics(),
       timing: getNavigationTiming(),
       resources: getResourceSummary(),
+      resourceTimings: getResourceTimings(),
       vitals: getWebVitals(),
       mouse: getMouseActivity(),
       keyboard: getKeyboardActivity(),
@@ -684,6 +704,7 @@
   window.__collector = {
     getNavigationTiming: getNavigationTiming,
     getResourceSummary: getResourceSummary,
+    getResourceTimings: getResourceTimings,
     getTechnographics: getTechnographics,
     getWebVitals: getWebVitals,
     getMouseActivity: getMouseActivity,

@@ -978,17 +978,63 @@ function extractResourceData(rows) {
 
     let usedSummaryColumns = false;
     if (resourceEntries.length === 0) {
+        const SUMMARY_MAP = {
+            script: 'JS',
+            link: 'CSS',
+            img: 'Image',
+            font: 'Font',
+            fetch: 'API',
+            xmlhttprequest: 'API',
+            other: 'Other',
+        };
+
         let summaryReqs = 0;
         let summaryBytes = 0;
         for (const row of rows) {
-            const count = Number(row.resource_count ?? 0);
-            const bytes = Number(row.resource_total_bytes ?? 0);
-            if (Number.isFinite(count) && count > 0) summaryReqs += count;
-            if (Number.isFinite(bytes) && bytes > 0) summaryBytes += bytes;
+            let rowUsedByType = false;
+
+            try {
+                const summaryObj = typeof row.resources_data === 'string'
+                    ? JSON.parse(row.resources_data)
+                    : row.resources_data;
+                const byType = summaryObj?.byType;
+
+                if (byType && typeof byType === 'object') {
+                    for (const [srcType, targetType] of Object.entries(SUMMARY_MAP)) {
+                        const item = byType[srcType];
+                        if (!item || typeof item !== 'object') continue;
+                        const count = Number(item.count ?? 0);
+                        const bytes = Number(item.totalSize ?? 0);
+
+                        if (Number.isFinite(count) && count > 0) {
+                            typeMap[targetType] = (typeMap[targetType] || 0) + count;
+                            summaryReqs += count;
+                            rowUsedByType = true;
+                        }
+                        if (Number.isFinite(bytes) && bytes > 0) {
+                            sizeMap[targetType] = (sizeMap[targetType] || 0) + bytes;
+                            summaryBytes += bytes;
+                            rowUsedByType = true;
+                        }
+                    }
+                }
+            } catch {}
+
+            if (!rowUsedByType) {
+                const count = Number(row.resource_count ?? 0);
+                const bytes = Number(row.resource_total_bytes ?? 0);
+                if (Number.isFinite(count) && count > 0) {
+                    typeMap.Other += count;
+                    summaryReqs += count;
+                }
+                if (Number.isFinite(bytes) && bytes > 0) {
+                    sizeMap.Other += bytes;
+                    summaryBytes += bytes;
+                }
+            }
         }
+
         if (summaryReqs > 0 || summaryBytes > 0) {
-            typeMap.Other = summaryReqs;
-            sizeMap.Other = summaryBytes;
             usedSummaryColumns = true;
         }
     }

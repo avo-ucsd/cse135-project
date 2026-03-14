@@ -169,7 +169,19 @@ switch ($resource) {
                                page_entered_at, page_left_at, page_left_reason,
                                mouse_total_moves, mouse_total_clicks, mouse_total_scrolls,
                                keyboard_total_keydown, keyboard_total_keyup,
-                               idle_total_count, idle_total_duration_ms
+                               idle_total_count, idle_total_duration_ms,
+                               resources_data,
+                               raw_payload,
+                               COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.totalResources')) AS UNSIGNED), 0) AS resource_count,
+                               (
+                                   COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.byType.script.totalSize')) AS UNSIGNED), 0) +
+                                   COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.byType.link.totalSize')) AS UNSIGNED), 0) +
+                                   COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.byType.img.totalSize')) AS UNSIGNED), 0) +
+                                   COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.byType.font.totalSize')) AS UNSIGNED), 0) +
+                                   COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.byType.fetch.totalSize')) AS UNSIGNED), 0) +
+                                   COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.byType.xmlhttprequest.totalSize')) AS UNSIGNED), 0) +
+                                   COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(resources_data, '$.byType.other.totalSize')) AS UNSIGNED), 0)
+                               ) AS resource_total_bytes
                         FROM pageviews
                         ORDER BY id DESC
                         LIMIT :limit OFFSET :offset
