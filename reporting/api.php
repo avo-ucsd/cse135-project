@@ -31,6 +31,11 @@
  *   GET    /api/notes               - List analyst notes (filterable)
  *   GET    /api/notes/{id}          - Single analyst note by ID
  *   POST   /api/notes               - Upsert analyst note
+ *
+ *   GET    /api/reports             - List report metadata (filterable)
+ *   GET    /api/reports/{id}        - Single report by ID
+ *   POST   /api/reports             - Create report metadata
+ *   POST   /api/reports/{id}        - Upload PDF file for a report
  */
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
@@ -129,6 +134,13 @@ function strLenSafe(string $s): int {
         return mb_strlen($s);
     }
     return strlen($s);
+}
+
+function sanitizeSlug(string $s): string {
+    $slug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', $s);
+    $slug = trim($slug ?? '', '-');
+    if ($slug === '') return 'report';
+    return strtolower($slug);
 }
 
 // ── Route dispatch ────────────────────────────────────────────────────────────
@@ -629,6 +641,195 @@ switch ($resource) {
                 $stmt->execute([':id' => $commentId]);
                 if ($stmt->rowCount() === 0) respond(404, ['error' => "Comment #$commentId not found"]);
                 respond(200, ['status' => 'deleted', 'id' => (int)$commentId]);
+                break;
+
+            default:
+                respond(405, ['error' => 'Method Not Allowed']);
+        }
+        break;
+
+    // ── /api/reports ─────────────────────────────────────────────────────────
+    case 'reports':
+        switch ($method) {
+
+            case 'GET':
+                if ($id === null) {
+                    // GET /api/reports?category=Errors&page=errors&report_id=errors-123&limit=100
+                    $limit = min(max((int)($_GET['limit'] ?? 100), 1), 500);
+                    $category = trim((string)($_GET['category'] ?? ''));
+                    $page = trim((string)($_GET['page'] ?? ''));
+                    $reportId = trim((string)($_GET['report_id'] ?? ''));
+
+                    $sql = "
+                        SELECT id, report_id, category, page, report_name, created_by,
+                               source_url, file_name, file_url, file_size, mime_type,
+                               status, created_at, updated_at
+                        FROM analyst_reports
+                    ";
+                    $where = [];
+                    $params = [];
+
+                    if ($category !== '') {
+                        $where[] = "category = :category";
+                        $params[':category'] = $category;
+                    }
+                    if ($page !== '') {
+                        $where[] = "page = :page";
+                        $params[':page'] = $page;
+                    }
+                    if ($reportId !== '') {
+                        $where[] = "report_id = :report_id";
+                        $params[':report_id'] = $reportId;
+                    }
+
+                    if (!empty($where)) {
+                        $sql .= " WHERE " . implode(' AND ', $where);
+                    }
+
+                    $sql .= " ORDER BY created_at DESC LIMIT :limit";
+                    $stmt = $pdo->prepare($sql);
+                    foreach ($params as $k => $v) {
+                        $stmt->bindValue($k, $v, PDO::PARAM_STR);
+                    }
+                    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                    $stmt->execute();
+
+                    respond(200, ['data' => $stmt->fetchAll(), 'limit' => $limit]);
+                } else {
+                    // GET /api/reports/{id}
+                    $reportPk = requireId($id);
+                    $stmt = $pdo->prepare(" 
+                        SELECT id, report_id, category, page, report_name, created_by,
+                               source_url, file_name, file_url, file_size, mime_type,
+                               status, created_at, updated_at
+                        FROM analyst_reports
+                        WHERE id = :id
+                    ");
+                    $stmt->execute([':id' => $reportPk]);
+                    $row = $stmt->fetch();
+                    if (!$row) respond(404, ['error' => "Report #$reportPk not found"]);
+                    respond(200, $row);
+                }
+                break;
+
+            case 'POST':
+                if ($id === null) {
+                    // POST /api/reports (JSON metadata create)
+                    $b = readBody();
+                    if (empty($b)) respond(400, ['error' => 'Request body is empty or invalid JSON']);
+
+                    $category = trim((string)($b['category'] ?? 'Errors'));
+                    $page = trim((string)($b['page'] ?? 'errors'));
+                    $reportName = trim((string)($b['report_name'] ?? 'Untitled report'));
+                    $createdBy = trim((string)($b['created_by'] ?? 'Analyst'));
+                    $sourceUrl = trim((string)($b['source_url'] ?? ''));
+                    $reportId = trim((string)($b['report_id'] ?? ''));
+                    if ($reportId === '') {
+                        $reportId = sanitizeSlug($page) . '-' . time() . '-' . bin2hex(random_bytes(3));
+                    }
+
+                    if (strLenSafe($category) > 64) respond(400, ['error' => 'Field "category" is too long']);
+                    if (strLenSafe($page) > 64) respond(400, ['error' => 'Field "page" is too long']);
+                    if (strLenSafe($reportName) > 255) respond(400, ['error' => 'Field "report_name" is too long']);
+                    if (strLenSafe($createdBy) > 100) respond(400, ['error' => 'Field "created_by" is too long']);
+                    if (strLenSafe($sourceUrl) > 1024) respond(400, ['error' => 'Field "source_url" is too long']);
+                    if (strLenSafe($reportId) > 128) respond(400, ['error' => 'Field "report_id" is too long']);
+
+                    $stmt = $pdo->prepare(" 
+                        INSERT INTO analyst_reports (report_id, category, page, report_name, created_by, source_url, status)
+                        VALUES (:report_id, :category, :page, :report_name, :created_by, :source_url, 'pending')
+                    ");
+                    $stmt->execute([
+                        ':report_id' => $reportId,
+                        ':category' => $category,
+                        ':page' => $page,
+                        ':report_name' => $reportName,
+                        ':created_by' => $createdBy,
+                        ':source_url' => $sourceUrl,
+                    ]);
+
+                    $newId = (int)$pdo->lastInsertId();
+                    respond(201, [
+                        'status' => 'created',
+                        'id' => $newId,
+                        'report_id' => $reportId,
+                    ]);
+                } else {
+                    // POST /api/reports/{id} (multipart file upload)
+                    $reportPk = requireId($id);
+
+                    if (!isset($_FILES['pdf']) || !is_array($_FILES['pdf'])) {
+                        respond(400, ['error' => 'Missing file field "pdf"']);
+                    }
+
+                    $file = $_FILES['pdf'];
+                    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                        respond(400, ['error' => 'File upload failed with error code ' . (int)$file['error']]);
+                    }
+
+                    $tmpPath = $file['tmp_name'] ?? '';
+                    $origName = (string)($file['name'] ?? 'report.pdf');
+                    $size = (int)($file['size'] ?? 0);
+                    if ($size <= 0) respond(400, ['error' => 'Uploaded file is empty']);
+                    if ($size > 25 * 1024 * 1024) respond(400, ['error' => 'PDF exceeds 25MB limit']);
+
+                    $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+                    if ($ext !== 'pdf') respond(400, ['error' => 'Only .pdf files are allowed']);
+
+                    $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : null;
+                    $mime = $finfo ? (string)finfo_file($finfo, $tmpPath) : 'application/pdf';
+                    if ($finfo) finfo_close($finfo);
+                    if ($mime !== 'application/pdf' && $mime !== 'application/octet-stream') {
+                        respond(400, ['error' => 'Uploaded file is not recognized as PDF']);
+                    }
+
+                    $reportStmt = $pdo->prepare("SELECT id, report_id FROM analyst_reports WHERE id = :id");
+                    $reportStmt->execute([':id' => $reportPk]);
+                    $reportRow = $reportStmt->fetch();
+                    if (!$reportRow) respond(404, ['error' => "Report #$reportPk not found"]);
+
+                    $uploadDir = __DIR__ . '/uploads/reports';
+                    if (!is_dir($uploadDir)) {
+                        if (!mkdir($uploadDir, 0755, true)) {
+                            respond(500, ['error' => 'Failed to create upload directory']);
+                        }
+                    }
+
+                    $safeReportId = sanitizeSlug((string)$reportRow['report_id']);
+                    $storedName = $safeReportId . '-' . time() . '.pdf';
+                    $storedPath = $uploadDir . '/' . $storedName;
+                    $publicUrl = '/uploads/reports/' . $storedName;
+
+                    if (!move_uploaded_file($tmpPath, $storedPath)) {
+                        respond(500, ['error' => 'Failed to store uploaded PDF']);
+                    }
+
+                    $upd = $pdo->prepare(" 
+                        UPDATE analyst_reports
+                        SET file_name = :file_name,
+                            file_path = :file_path,
+                            file_url = :file_url,
+                            file_size = :file_size,
+                            mime_type = :mime_type,
+                            status = 'ready',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :id
+                    ");
+                    $upd->execute([
+                        ':file_name' => $origName,
+                        ':file_path' => $storedPath,
+                        ':file_url' => $publicUrl,
+                        ':file_size' => $size,
+                        ':mime_type' => $mime,
+                        ':id' => $reportPk,
+                    ]);
+
+                    respond(200, [
+                        'status' => 'uploaded',
+                        'id' => (int)$reportPk,
+                        'file_url' => $publicUrl,
+                    ]);
+                }
                 break;
 
             default:

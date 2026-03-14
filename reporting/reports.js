@@ -1,17 +1,18 @@
 /**
  * reports.js — Reports list page
- * Pulls saved reports metadata from localStorage.
+ * Pulls saved reports metadata from server API.
  */
 
 'use strict';
 
-function loadReports() {
-  try {
-    const raw = localStorage.getItem('analytics:reports');
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+const BASE = '/api';
+
+async function apiFetch(path) {
+  const res = await fetch(BASE + path);
+  if (!res.ok) throw new Error(`API ${path} -> HTTP ${res.status}`);
+  const ct = res.headers.get('Content-Type') ?? '';
+  if (!ct.includes('application/json')) throw new Error(`Unexpected Content-Type "${ct}" for ${path}`);
+  return res.json();
 }
 
 function formatDate(iso) {
@@ -24,23 +25,42 @@ function formatDate(iso) {
   }
 }
 
-function renderTable() {
+function resolveOpenUrl(report) {
+  if (report.file_url) return report.file_url;
+  const page = (report.page || '').toLowerCase();
+  const pageFile = page === 'engagement' ? 'engagement.html'
+    : page === 'performance' ? 'performance.html'
+    : 'errors.html';
+  return `${pageFile}?reportId=${encodeURIComponent(report.report_id || '')}`;
+}
+
+async function renderTable() {
   const tbody = document.getElementById('reportsTableBody');
   if (!tbody) return;
 
-  const reports = loadReports();
+  let reports = [];
+  try {
+    const res = await apiFetch('/reports?limit=500');
+    reports = res.data ?? [];
+  } catch (err) {
+    console.error('[reports] load failed', err);
+    tbody.innerHTML = '<tr><td class="empty-state" colspan="5">Could not load reports from server.</td></tr>';
+    return;
+  }
+
   if (!reports.length) {
-    tbody.innerHTML = '<tr><td class="empty-state" colspan="4">No reports saved yet.</td></tr>';
+    tbody.innerHTML = '<tr><td class="empty-state" colspan="5">No reports saved yet.</td></tr>';
     return;
   }
 
   tbody.innerHTML = reports
     .map((r) => `
-      <tr data-url="${r.printUrl || r.viewUrl || '#'}">
-        <td>${r.name ? r.name : 'Untitled report'}</td>
+      <tr data-url="${resolveOpenUrl(r)}">
+        <td>${r.report_name ? r.report_name : 'Untitled report'}</td>
         <td><span class="report-pill">${r.category || 'Report'}</span></td>
-        <td>${formatDate(r.createdAt)}</td>
-        <td><a class="report-open" href="${r.printUrl || r.viewUrl || '#'}">Open PDF</a></td>
+        <td><span class="report-pill ${r.status === 'ready' ? 'status-ready' : 'status-pending'}">${r.status || 'pending'}</span></td>
+        <td>${formatDate(r.created_at)}</td>
+        <td><a class="report-open" href="${resolveOpenUrl(r)}" target="_blank" rel="noopener">${r.file_url ? 'Open PDF' : 'Open Report'}</a></td>
       </tr>
     `)
     .join('');

@@ -54,6 +54,16 @@
   letter-spacing: 0.05em;
 }
 
+.report-pill.status-ready {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+}
+
+.report-pill.status-pending {
+  background: rgba(247, 162, 79, 0.16);
+  color: #f7a24f;
+}
+
 .report-open {
   color: #c0c8e0;
   font-weight: 600;

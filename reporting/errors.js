@@ -1013,30 +1013,99 @@ document.addEventListener('DOMContentLoaded', init);
 
 function initReportActions() {
   const saveBtn = document.getElementById('saveReportBtn');
-  if (!saveBtn) return;
+  const uploadBtn = document.getElementById('uploadReportPdfBtn');
+  const fileInput = document.getElementById('reportPdfInput');
+  if (!saveBtn || !uploadBtn || !fileInput) return;
 
-  saveBtn.addEventListener('click', () => {
+  function getCurrentReportId() {
+    return getReportId() === 'current' ? '' : getReportId();
+  }
+
+  async function findReportPkByReportId(reportId) {
+    const q = new URLSearchParams({ report_id: reportId, page: 'errors', category: 'Errors', limit: '1' });
+    const res = await apiFetch(`/reports?${q.toString()}`);
+    return Number(res?.data?.[0]?.id ?? 0);
+  }
+
+  saveBtn.addEventListener('click', async () => {
     const name = window.prompt('Report name:', `Errors Report — ${new Date().toLocaleDateString('en-US')}`);
     if (!name) return;
 
-    const reportId = `errors-${Date.now()}`;
-    const createdAt = new Date().toISOString();
-    const baseUrl = window.location.pathname.replace(/\/reporting\//, '/reporting/');
-    const viewUrl = `${baseUrl}?reportId=${encodeURIComponent(reportId)}`;
-    const printUrl = `${viewUrl}&print=1`;
+    try {
+      const res = await fetch(BASE + '/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'Errors',
+          page: 'errors',
+          report_name: name.trim(),
+          created_by: 'Analyst',
+          source_url: window.location.href,
+        }),
+      });
 
-    const reports = loadJson('analytics:reports', []);
-    reports.unshift({
-      id: reportId,
-      name,
-      category: 'Errors',
-      createdAt,
-      viewUrl,
-      printUrl,
-    });
-    saveJson('analytics:reports', reports);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`HTTP ${res.status} ${body}`);
+      }
 
-    window.location.href = printUrl;
+      const payload = await res.json();
+      const reportId = payload?.report_id;
+      if (!reportId) throw new Error('Missing report_id from API');
+
+      const baseUrl = window.location.pathname;
+      const printUrl = `${baseUrl}?reportId=${encodeURIComponent(reportId)}&print=1`;
+      window.location.href = printUrl;
+    } catch (err) {
+      console.error('[reports] create failed', err);
+      window.alert('Failed to create server report record.');
+    }
+  });
+
+  uploadBtn.addEventListener('click', () => {
+    const reportId = getCurrentReportId();
+    if (!reportId) {
+      window.alert('Save the report first so a report ID exists, then upload the PDF.');
+      return;
+    }
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async () => {
+    const reportId = getCurrentReportId();
+    const file = fileInput.files?.[0];
+    if (!reportId || !file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      window.alert('Please select a PDF file.');
+      return;
+    }
+
+    try {
+      const reportPk = await findReportPkByReportId(reportId);
+      if (!reportPk) {
+        window.alert('Could not find server report record for this report ID.');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('pdf', file);
+      const up = await fetch(`${BASE}/reports/${reportPk}`, {
+        method: 'POST',
+        body: fd,
+      });
+
+      if (!up.ok) {
+        const body = await up.text();
+        throw new Error(`HTTP ${up.status} ${body}`);
+      }
+
+      window.alert('PDF uploaded to server successfully.');
+    } catch (err) {
+      console.error('[reports] upload failed', err);
+      window.alert('Failed to upload PDF to server.');
+    }
   });
 }
 
