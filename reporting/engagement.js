@@ -569,15 +569,15 @@ function renderCohortTable(rows, granularity) {
 function renderSessionsTable(rows) {
   const tbody = document.getElementById('sessionsBody');
   if (!tbody) return;
-  const top = rows.slice(0, 30);
+  const top = rows.slice(0, 10);
   tbody.innerHTML = top.map((row) => `
     <tr>
       <td title="${escHtml(row.sessionId)}">${escHtml(row.sessionId.slice(0, 12))}...</td>
       <td>${escHtml(row.startISO.replace('T', ' ').slice(0, 19))}</td>
       <td>${fmtDuration(row.durationMs)}</td>
       <td>${row.pages.toLocaleString()}</td>
-      <td>${escHtml(`${row.device} / ${row.channel}`)}</td>
-      ${row.totalErrors > 0 ? `<td class="error-val">${row.totalErrors.toLocaleString()}</td>` : '<td>0</td>'}
+      <td>${row.pages === 1 ? 'Yes' : 'No'}</td>
+      <td>${escHtml(row.device)}</td>
     </tr>
   `).join('');
 }

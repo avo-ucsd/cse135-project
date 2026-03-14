@@ -1138,6 +1138,7 @@ function getRegionHeuristic(timeZone = Intl.DateTimeFormat().resolvedOptions().t
 function renderGeographySegment(technoData) {
     const rowsEl = document.querySelector('[data-geo-rows]');
     const summaryEl = document.querySelector('[data-geo-summary]');
+    const tooltipEl = document.querySelector('[data-geo-tooltip]');
     if (!rowsEl || !summaryEl) return;
 
     const totals = new Map();
@@ -1172,7 +1173,7 @@ function renderGeographySegment(technoData) {
     const maxCount = Math.max(...entries.map(entry => entry.count), 1);
 
     rowsEl.innerHTML = entries.map(entry => {
-        const widthPct = Math.max((entry.count / maxCount) * 100, 3);
+        const widthPct = Math.max((entry.count / maxCount) * 75, 2.5);
         const sharePct = totalCount > 0 ? ((entry.count / totalCount) * 100) : 0;
         const barClass = entry.region === 'US West' || entry.region === 'US East'
             ? 'geo-americas'
@@ -1187,13 +1188,42 @@ function renderGeographySegment(technoData) {
                             : 'geo-other';
 
         return `<li class="wf-row geo-row">
-            <span class="wf-name" title="${escHtml(entry.region)}">${escHtml(entry.region)}</span>
+            <span class="wf-name">${escHtml(entry.region)}</span>
             <div class="wf-bar-track">
-                <div class="wf-bar ${barClass}" style="left:0%;width:${widthPct.toFixed(2)}%" title="${escHtml(entry.region)}&#10;Sessions: ${entry.count.toLocaleString()}&#10;Share: ${sharePct.toFixed(1)}%"></div>
+                <div class="wf-bar ${barClass}" style="left:0%;width:${widthPct.toFixed(2)}%" data-geo-region="${escHtml(entry.region)}" data-geo-sessions="${entry.count}" data-geo-share="${sharePct.toFixed(1)}"></div>
             </div>
-            <span class="wf-dur">${entry.count.toLocaleString()} · ${sharePct.toFixed(1)}%</span>
+            <span class="wf-dur">${entry.count.toLocaleString()} / ${sharePct.toFixed(1)}%</span>
         </li>`;
     }).join('');
+
+    if (!tooltipEl) return;
+
+    const bars = rowsEl.querySelectorAll('.wf-bar');
+    bars.forEach(bar => {
+        bar.addEventListener('mousemove', e => {
+            const region = bar.dataset.geoRegion ?? 'Unknown';
+            const sessions = Number(bar.dataset.geoSessions ?? 0).toLocaleString();
+            const share = bar.dataset.geoShare ?? '0.0';
+
+            tooltipEl.innerHTML = `<strong>${escHtml(region)}</strong><br>Sessions: ${escHtml(sessions)}<br>Share: ${escHtml(share)}%`;
+            tooltipEl.style.display = 'block';
+
+            const offset = 12;
+            const rect = tooltipEl.getBoundingClientRect();
+            let left = e.clientX + offset;
+            let top = e.clientY - rect.height - offset;
+
+            if (left + rect.width > window.innerWidth - 8) left = e.clientX - rect.width - offset;
+            if (top < 8) top = e.clientY + offset;
+
+            tooltipEl.style.left = left + 'px';
+            tooltipEl.style.top = top + 'px';
+        });
+
+        bar.addEventListener('mouseleave', () => {
+            tooltipEl.style.display = 'none';
+        });
+    });
 }
 
 function renderDeviceSegment(technoData, vitalsData) {
