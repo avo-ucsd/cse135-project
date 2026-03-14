@@ -75,3 +75,7 @@ On role management:
 - We did not account for possible race conditions if two people are trying to edit roles at the same time. We do not know what happens if this happens.
 - People with the superadmin role cannot modify their own role or others' roles if they also have the superadmin role. This is an intentional design choice.
   - Additionally, a superadmin cannot grant the role to another user i.e. the only roles that can be changed are between viewer and analyst.
+
+On the Performance page:
+- Resource load breakdown is dominated by images. There is data transferred as JavaScript and CSS for example, but they will show as 0%, giving off of the implication that they do not affect resource load.
+- For Resource load breakdown and LCP distribution, they do not have options to view page-by-page which would be useful in an analyst context to inform developers of what needs to be fixed.
