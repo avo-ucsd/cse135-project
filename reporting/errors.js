@@ -40,17 +40,37 @@ function linearScale(domainMin, domainMax, rangeMin, rangeMax) {
   return fn;
 }
 
-/** Extract error.type, error.message, browser, and platform from the raw_payload JSON string. */
+function detectBrowser(ua) {
+  if (!ua) return 'Unknown';
+  const u = ua.toLowerCase();
+  if (u.includes('edg/'))                              return 'Edge';
+  if (u.includes('opr/') || u.includes('opera'))      return 'Opera';
+  if (u.includes('firefox/'))                         return 'Firefox';
+  if (u.includes('safari/') && !u.includes('chrome/')) return 'Safari';
+  if (u.includes('chrome/'))                          return 'Chrome';
+  return 'Other';
+}
+
+function detectDevice(ua) {
+  if (!ua) return 'Unknown';
+  const u = ua.toLowerCase();
+  if (u.includes('ipad') || u.includes('tablet'))              return 'Tablet';
+  if (u.includes('mobile') || u.includes('android') || u.includes('iphone')) return 'Mobile';
+  return 'Desktop';
+}
+
+/** Extract error.type, error.message, browser, and device from the raw_payload JSON string. */
 function parsePayload(raw) {
   try {
-    const p = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+    const p  = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+    const ua = p?.userAgent ?? p?.user_agent ?? '';
     return {
-      type:     p?.error?.type     ?? '—',
-      message:  p?.error?.message  ?? '—',
-      browser:  p?.browser         ?? p?.userAgent?.split('/')[0] ?? '—',
-      platform: p?.platform        ?? p?.os                       ?? '—',
+      type:    p?.error?.type    ?? '—',
+      message: p?.error?.message ?? '—',
+      browser: detectBrowser(ua),
+      device:  detectDevice(ua),
     };
-  } catch { return { type: '—', message: '—', browser: '—', platform: '—' }; }
+  } catch { return { type: '—', message: '—', browser: 'Unknown', device: 'Unknown' }; }
 }
 
 // ── Time-range filter ─────────────────────────────────────────────────────────
@@ -553,36 +573,29 @@ function renderBrowserChart(errors) {
   canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; draw(); });
 }
 
-// ── Errors by Platform chart ──────────────────────────────────────────────────
+// ── Errors by Device chart ────────────────────────────────────────────────────
 
-function renderPlatformChart(errors) {
-  const canvas  = document.getElementById('platformChart');
-  const tooltip = document.getElementById('platformTooltip');
+function renderDeviceChart(errors) {
+  const canvas  = document.getElementById('deviceChart');
+  const tooltip = document.getElementById('deviceTooltip');
   if (!canvas) return;
 
   const COLORS = ['#4f8ef7', '#b94ff7', '#f7a24f', '#4fd1f7', '#f74f7a', '#a8f74f'];
 
-  const platMap = new Map();
+  const deviceMap = new Map();
   for (const row of errors) {
-    const { platform } = parsePayload(row.raw_payload);
-    let p = String(platform ?? '—');
-    if (/windows/i.test(p))    p = 'Windows';
-    else if (/mac|osx/i.test(p)) p = 'macOS';
-    else if (/linux/i.test(p)) p = 'Linux';
-    else if (/android/i.test(p)) p = 'Android';
-    else if (/ios|iphone|ipad/i.test(p)) p = 'iOS';
-    else if (p === '—') p = 'Unknown';
-    platMap.set(p, (platMap.get(p) ?? 0) + Number(row.error_count ?? 1));
+    const { device } = parsePayload(row.raw_payload);
+    deviceMap.set(device, (deviceMap.get(device) ?? 0) + Number(row.error_count ?? 1));
   }
 
-  const sorted = [...platMap.entries()].sort((a, b) => b[1] - a[1]);
+  const sorted = [...deviceMap.entries()].sort((a, b) => b[1] - a[1]);
   const total  = sorted.reduce((s, [, v]) => s + v, 0);
 
   if (!sorted.length || total === 0) {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#717a96'; ctx.font = '13px Arial';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('No platform data available', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('No device data available', canvas.width / 2, canvas.height / 2);
     return;
   }
 
@@ -599,7 +612,7 @@ function renderPlatformChart(errors) {
     // title
     ctx.fillStyle = '#e8eaf0'; ctx.font = 'bold 14px Arial, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText('Errors by Platform', canvas.width / 2, 10);
+    ctx.fillText('Errors by Device', canvas.width / 2, 10);
 
     const xMax = sorted[0][1] * 1.15;
     const xScale = linearScale(0, xMax, M.left, M.left + W);
@@ -919,7 +932,7 @@ async function init() {
       renderErrorTrendChart(errors, days);
       renderTopPagesChart(errors);
       renderBrowserChart(errors);
-      renderPlatformChart(errors);
+      renderDeviceChart(errors);
       renderErrorLog(errors);
       renderTopPagesTable(errors);
       renderRecommendations(errors);
