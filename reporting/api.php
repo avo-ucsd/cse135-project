@@ -122,6 +122,13 @@ function forbidId(?string $id): void {
     }
 }
 
+function strLenSafe(string $s): int {
+    if (function_exists('mb_strlen')) {
+        return mb_strlen($s);
+    }
+    return strlen($s);
+}
+
 // ── Route dispatch ────────────────────────────────────────────────────────────
 switch ($resource) {
 
@@ -439,11 +446,11 @@ switch ($resource) {
 
                 if ($noteText === '') respond(400, ['error' => 'Field "note_text" is required']);
 
-                if (mb_strlen($category) > 64) respond(400, ['error' => 'Field "category" is too long']);
-                if (mb_strlen($reportId) > 128) respond(400, ['error' => 'Field "report_id" is too long']);
-                if (mb_strlen($page) > 64) respond(400, ['error' => 'Field "page" is too long']);
-                if (mb_strlen($name) > 100) respond(400, ['error' => 'Field "analyst_name" is too long']);
-                if (mb_strlen($noteText) > 20000) respond(400, ['error' => 'Field "note_text" is too long']);
+                if (strLenSafe($category) > 64) respond(400, ['error' => 'Field "category" is too long']);
+                if (strLenSafe($reportId) > 128) respond(400, ['error' => 'Field "report_id" is too long']);
+                if (strLenSafe($page) > 64) respond(400, ['error' => 'Field "page" is too long']);
+                if (strLenSafe($name) > 100) respond(400, ['error' => 'Field "analyst_name" is too long']);
+                if (strLenSafe($noteText) > 20000) respond(400, ['error' => 'Field "note_text" is too long']);
 
                 $stmt = $pdo->prepare(" 
                     INSERT INTO analyst_notes (category, report_id, page, analyst_name, note_text)
@@ -557,11 +564,11 @@ switch ($resource) {
                 if ($message === '') respond(400, ['error' => 'Field "message" is required']);
 
                 // Basic length guards to avoid oversized payloads
-                if (mb_strlen($category) > 64) respond(400, ['error' => 'Field "category" is too long']);
-                if (mb_strlen($reportId) > 128) respond(400, ['error' => 'Field "report_id" is too long']);
-                if (mb_strlen($page) > 64) respond(400, ['error' => 'Field "page" is too long']);
-                if (mb_strlen($name) > 100) respond(400, ['error' => 'Field "analyst_name" is too long']);
-                if (mb_strlen($message) > 5000) respond(400, ['error' => 'Field "message" is too long']);
+                if (strLenSafe($category) > 64) respond(400, ['error' => 'Field "category" is too long']);
+                if (strLenSafe($reportId) > 128) respond(400, ['error' => 'Field "report_id" is too long']);
+                if (strLenSafe($page) > 64) respond(400, ['error' => 'Field "page" is too long']);
+                if (strLenSafe($name) > 100) respond(400, ['error' => 'Field "analyst_name" is too long']);
+                if (strLenSafe($message) > 5000) respond(400, ['error' => 'Field "message" is too long']);
 
                 $stmt = $pdo->prepare(" 
                     INSERT INTO analyst_comments (category, report_id, page, analyst_name, message)
