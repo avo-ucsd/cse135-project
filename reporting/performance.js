@@ -975,8 +975,10 @@ function getResourceEntriesFromPayload(payload) {
 
 function extractResourceData(rows) {
     const resourceEntries = [];
+    const summaryResourceEntries = [];
     const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
     const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
+    const durationMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
     let cachedResources = 0;
 
     const resourceRows = rows.filter(r => r.event_type === 'resource');
@@ -1025,6 +1027,7 @@ function extractResourceData(rows) {
                         if (!item || typeof item !== 'object') continue;
                         const count = Number(item.count ?? 0);
                         const bytes = Number(item.totalSize ?? 0);
+                        const duration = Number(item.totalDuration ?? 0);
 
                         if (Number.isFinite(count) && count > 0) {
                             typeMap[targetType] = (typeMap[targetType] || 0) + count;
@@ -1034,6 +1037,10 @@ function extractResourceData(rows) {
                         if (Number.isFinite(bytes) && bytes > 0) {
                             sizeMap[targetType] = (sizeMap[targetType] || 0) + bytes;
                             summaryBytes += bytes;
+                            rowUsedByType = true;
+                        }
+                        if (Number.isFinite(duration) && duration > 0) {
+                            durationMap[targetType] = (durationMap[targetType] || 0) + duration;
                             rowUsedByType = true;
                         }
                     }
@@ -1056,6 +1063,38 @@ function extractResourceData(rows) {
 
         if (summaryReqs > 0 || summaryBytes > 0) {
             usedSummaryColumns = true;
+
+            const SUMMARY_ENTRY_META = {
+                JS: { name: 'summary.js', initiatorType: 'script' },
+                CSS: { name: 'summary.css', initiatorType: 'link' },
+                Image: { name: 'summary.png', initiatorType: 'img' },
+                Font: { name: 'summary.woff2', initiatorType: 'font' },
+                API: { name: '/api/summary', initiatorType: 'fetch' },
+                Other: { name: 'summary.bin', initiatorType: 'other' },
+            };
+
+            let syntheticStart = 0;
+            for (const type of ['JS', 'CSS', 'Image', 'Font', 'API', 'Other']) {
+                const count = Number(typeMap[type] ?? 0);
+                const bytes = Number(sizeMap[type] ?? 0);
+                const duration = Number(durationMap[type] ?? 0);
+                if (count <= 0 && bytes <= 0 && duration <= 0) continue;
+
+                const meta = SUMMARY_ENTRY_META[type];
+                const d = duration > 0 ? duration : Math.max(20, count * 25);
+                summaryResourceEntries.push({
+                    name: meta.name,
+                    initiatorType: meta.initiatorType,
+                    startTime: syntheticStart,
+                    duration: d,
+                    responseEnd: syntheticStart + d,
+                    transferSize: bytes,
+                    decodedBodySize: bytes,
+                    summaryDerived: true,
+                    summaryCount: count,
+                });
+                syntheticStart += d;
+            }
         }
     }
 
@@ -1075,17 +1114,19 @@ function extractResourceData(rows) {
         : 0;
 
     const hasResourceDetail = resourceEntries.length > 0;
+    const displayResourceEntries = hasResourceDetail ? resourceEntries : summaryResourceEntries;
     const hasAnyResourceSignal = hasResourceDetail || usedSummaryColumns || resourceRows.length > 0;
 
     let emptyReason = null;
     if (!hasAnyResourceSignal) {
         emptyReason = 'Resource timing not collected by wreckedtech tracker';
-    } else if (!hasResourceDetail && usedSummaryColumns) {
+    } else if (!hasResourceDetail && usedSummaryColumns && displayResourceEntries.length === 0) {
         emptyReason = 'Resource-level detail not collected';
     }
 
     return {
         resourceEntries,
+        displayResourceEntries,
         typeMap,
         sizeMap,
         totalResources,
@@ -1186,7 +1227,8 @@ function renderSlowestRequests(resourceEntries, emptyReason = null) {
 
     tbody.innerHTML = sorted.map((r, i) => {
         const rawName = String(r.name ?? '(unknown)');
-        const name    = rawName.split('/').pop().split('?')[0] || rawName;
+        const baseName = rawName.split('/').pop().split('?')[0] || rawName;
+        const name    = r.summaryDerived ? `${baseName} (summary)` : baseName;
         const type    = getResourceType(r);
         const dur     = Math.round(Number(r.duration) || 0);
         const size    = r.transferSize > 0 ? formatBytes(r.transferSize) : '-';
@@ -1981,6 +2023,7 @@ function refreshAllSections() {
     renderUnderperf(urlMap, bounceSessions, uniqueErrorMap);
     const {
         resourceEntries,
+        displayResourceEntries,
         typeMap,
         sizeMap,
         totalResources,
@@ -1993,8 +2036,8 @@ function refreshAllSections() {
         hasResourceDetail,
         hasAnyResourceSignal,
     });
-    renderSlowestRequests(resourceEntries, emptyReason);
-    renderWaterfall(resourceEntries, filteredRows, emptyReason);
+    renderSlowestRequests(displayResourceEntries, emptyReason);
+    renderWaterfall(displayResourceEntries, filteredRows, emptyReason);
 
     // Populate selects
     populateTrendSelect(urlMap);
