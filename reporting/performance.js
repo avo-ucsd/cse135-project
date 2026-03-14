@@ -925,7 +925,7 @@ function initCoreWebVitals() {
 //  Tier 2: Resource Timing 
 
 function getResourceType(entry) {
-    const url  = entry.name;
+    const url  = String(entry?.name ?? '');
     const init = entry.initiatorType;
     if (init === 'xmlhttprequest' || init === 'fetch') return 'API';
     if (/\.js(\?|$)/.test(url))                         return 'JS';
@@ -940,42 +940,138 @@ const RESOURCE_COLORS = {
     Font: '#f87171', API: '#b94ff7', Other: '#717a96',
 };
 
-function extractResourceEntries(rows) {
-    return rows
-        .filter(r => r.event_type === 'resource')
-        .map(r => {
-            try {
-                return JSON.parse(r.raw_payload);
-            } catch {
-                return null;
-            }
-        })
-        .filter(Boolean)
-        .flat();
+function toResourceList(parsed) {
+    if (!parsed) return [];
+    if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === 'object') return [parsed];
+    return [];
 }
 
-function buildResourceBreakdownFromRows(rows) {
-    const resources = extractResourceEntries(rows);
+function getResourceEntriesFromPayload(payload) {
+    if (!payload || typeof payload !== 'object') return [];
+    const embedded = payload?.resources ?? payload?.resourceTimings ?? [];
+    return toResourceList(embedded);
+}
+
+function extractResourceData(rows) {
+    const resourceEntries = [];
     const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
     const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
-    let cached = 0;
+    let cachedResources = 0;
 
-    for (const r of resources) {
+    const resourceRows = rows.filter(r => r.event_type === 'resource');
+    for (const row of resourceRows) {
+        try {
+            const parsed = JSON.parse(row.raw_payload ?? 'null');
+            resourceEntries.push(...toResourceList(parsed));
+        } catch {}
+    }
+
+    if (resourceEntries.length === 0) {
+        for (const row of rows) {
+            try {
+                const payload = JSON.parse(row.raw_payload ?? '{}');
+                resourceEntries.push(...getResourceEntriesFromPayload(payload));
+            } catch {}
+        }
+    }
+
+    let usedSummaryColumns = false;
+    if (resourceEntries.length === 0) {
+        let summaryReqs = 0;
+        let summaryBytes = 0;
+        for (const row of rows) {
+            const count = Number(row.resource_count ?? 0);
+            const bytes = Number(row.resource_total_bytes ?? 0);
+            if (Number.isFinite(count) && count > 0) summaryReqs += count;
+            if (Number.isFinite(bytes) && bytes > 0) summaryBytes += bytes;
+        }
+        if (summaryReqs > 0 || summaryBytes > 0) {
+            typeMap.Other = summaryReqs;
+            sizeMap.Other = summaryBytes;
+            usedSummaryColumns = true;
+        }
+    }
+
+    for (const r of resourceEntries) {
         const type = getResourceType(r);
         typeMap[type] = (typeMap[type] || 0) + 1;
         sizeMap[type] = (sizeMap[type] || 0) + (Number(r.transferSize) || 0);
-        if (Number(r.transferSize) === 0 && Number(r.decodedBodySize) > 0) cached++;
+        if (Number(r.transferSize) === 0 && Number(r.decodedBodySize) > 0) cachedResources++;
     }
 
-    const cacheRate = resources.length > 0
-        ? Math.round((cached / resources.length) * 100)
+    const totalResources = resourceEntries.length > 0
+        ? resourceEntries.length
+        : Object.values(typeMap).reduce((sum, val) => sum + val, 0);
+
+    const cacheRate = resourceEntries.length > 0
+        ? Math.round((cachedResources / resourceEntries.length) * 100)
         : 0;
 
-    return { resources, typeMap, sizeMap, cacheRate };
+    const hasResourceDetail = resourceEntries.length > 0;
+    const hasAnyResourceSignal = hasResourceDetail || usedSummaryColumns || resourceRows.length > 0;
+
+    let emptyReason = null;
+    if (!hasAnyResourceSignal) {
+        emptyReason = 'Resource timing not collected by wreckedtech tracker';
+    } else if (!hasResourceDetail && usedSummaryColumns) {
+        emptyReason = 'Resource-level detail not collected';
+    }
+
+    return {
+        resourceEntries,
+        typeMap,
+        sizeMap,
+        totalResources,
+        cacheRate,
+        hasResourceDetail,
+        hasAnyResourceSignal,
+        emptyReason,
+    };
 }
 
-function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate) {
+function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate, options = {}) {
+    const {
+        hasResourceDetail = true,
+        hasAnyResourceSignal = true,
+    } = options;
     const totalSize = Object.values(sizeMap).reduce((a, b) => a + b, 0);
+
+    const set = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
+
+    if (!hasAnyResourceSignal) {
+        for (const type of Object.keys(sizeMap)) {
+            const row = document.querySelector(`[data-resource-bar="${type}"]`);
+            if (!row) continue;
+            const fill = row.querySelector('.resource-fill');
+            const pctEl  = row.querySelector('.resource-pct');
+            const sizeEl = row.querySelector('.resource-size');
+            if (fill) fill.style.width = '0%';
+            if (pctEl) pctEl.textContent = 'Not instrumented';
+            if (sizeEl) sizeEl.textContent = '—';
+        }
+        set('[data-total-size]', '—');
+        set('[data-total-reqs]', 'Not instrumented');
+        set('[data-cache-rate]', '—');
+        return;
+    }
+
+    if (!hasResourceDetail) {
+        for (const type of Object.keys(sizeMap)) {
+            const row = document.querySelector(`[data-resource-bar="${type}"]`);
+            if (!row) continue;
+            const fill = row.querySelector('.resource-fill');
+            const pctEl  = row.querySelector('.resource-pct');
+            const sizeEl = row.querySelector('.resource-size');
+            if (fill) fill.style.width = type === 'Other' ? '100%' : '0%';
+            if (pctEl) pctEl.textContent = type === 'Other' ? 'Summary only' : '—';
+            if (sizeEl) sizeEl.textContent = type === 'Other' ? formatBytes(sizeMap.Other ?? 0) : '—';
+        }
+        set('[data-total-size]', totalSize > 0 ? formatBytes(totalSize) : '—');
+        set('[data-total-reqs]', totalReqs > 0 ? totalReqs.toLocaleString() : '—');
+        set('[data-cache-rate]', 'N/A (no per-resource detail)');
+        return;
+    }
 
     for (const [type, size] of Object.entries(sizeMap)) {
         const row = document.querySelector(`[data-resource-bar="${type}"]`);
@@ -992,37 +1088,36 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate) {
         if (sizeEl) sizeEl.textContent = formatBytes(size);
     }
 
-    const set = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
     set('[data-total-size]', formatBytes(totalSize));
     set('[data-total-reqs]', totalReqs.toLocaleString());
     set('[data-cache-rate]', cacheRate + '%');
 }
 
-function renderSlowestRequests(rows) {
+function renderSlowestRequests(resourceEntries, emptyReason = null) {
     const tbody = document.querySelector('[data-slow-requests]');
     if (!tbody) return;
 
-    const resources = extractResourceEntries(rows);
-
-    const sorted = [...resources]
+    const sorted = [...resourceEntries]
         .sort((a, b) => b.duration - a.duration)
         .slice(0, 8);
 
     if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="null-val" style="text-align:center">No resource data available in collected data</td></tr>';
+        const msg = emptyReason ?? 'No resource data available in collected data';
+        tbody.innerHTML = `<tr><td colspan="6" class="null-val" style="text-align:center">${escHtml(msg)}</td></tr>`;
         return;
     }
 
     tbody.innerHTML = sorted.map((r, i) => {
-        const name    = r.name.split('/').pop().split('?')[0] || r.name;
+        const rawName = String(r.name ?? '(unknown)');
+        const name    = rawName.split('/').pop().split('?')[0] || rawName;
         const type    = getResourceType(r);
-        const dur     = Math.round(r.duration);
+        const dur     = Math.round(Number(r.duration) || 0);
         const size    = r.transferSize > 0 ? formatBytes(r.transferSize) : '-';
         const cached  = r.transferSize === 0 && r.decodedBodySize > 0;
         const durCls  = dur > 1000 ? 'error-val' : dur > 500 ? 'warn-val' : '';
         return `<tr>
             <td style="color:var(--text-muted)">${i + 1}</td>
-            <td data-col="page" title="${escHtml(r.name)}">${escHtml(name)}</td>
+            <td data-col="page" title="${escHtml(rawName)}">${escHtml(name)}</td>
             <td><span class="type-badge type-${type.toLowerCase()}">${escHtml(type)}</span></td>
             <td class="${durCls}">${dur.toLocaleString()}ms</td>
             <td>${escHtml(size)}</td>
@@ -1031,35 +1126,38 @@ function renderSlowestRequests(rows) {
     }).join('');
 }
 
-function renderWaterfall(rows) {
+function renderWaterfall(resourceEntries, rows, emptyReason = null) {
     const axis      = document.querySelector('[data-waterfall-axis]');
     const container = document.querySelector('[data-waterfall]');
     if (!axis || !container) return;
 
-    const resources = extractResourceEntries(rows);
-
-    if (resources.length === 0) {
-        container.innerHTML = '<li class="null-val" style="padding:1rem">No resource data available in collected data</li>';
+    if (resourceEntries.length === 0) {
+        const msg = emptyReason ?? 'No resource data available in collected data';
+        container.innerHTML = `<li class="null-val" style="padding:1rem">${escHtml(msg)}</li>`;
         return;
     }
 
-    const navEntry = rows.find(r => r.event_type === 'navigation');
-    let nav = null;
-    if (navEntry) {
+    const navRow = rows.find(r => r.event_type === 'navigation');
+    let totalMs = 2000;
+    const derivedFromResources = Math.max(
+        ...resourceEntries.map(r => (Number(r.startTime) || 0) + (Number(r.duration) || 0)),
+        100
+    );
+
+    if (navRow) {
         try {
-            nav = JSON.parse(navEntry.raw_payload);
+            const nav = JSON.parse(navRow.raw_payload ?? '{}');
+            totalMs = Math.max(Number(nav.loadEventEnd ?? 0), derivedFromResources, 100);
         } catch {
-            nav = null;
+            totalMs = derivedFromResources;
         }
+    } else {
+        totalMs = derivedFromResources;
     }
-    const pageEnd = nav
-        ? Math.max(nav.loadEventEnd, ...resources.map(r => r.responseEnd))
-        : Math.max(...resources.map(r => r.responseEnd));
-    const totalMs = Math.max(pageEnd, 100);
 
     // Sort by startTime, take top 20
-    const sorted = [...resources]
-        .sort((a, b) => a.startTime - b.startTime)
+    const sorted = [...resourceEntries]
+        .sort((a, b) => (Number(a.startTime) || 0) - (Number(b.startTime) || 0))
         .slice(0, 20);
 
     // Axis tick marks
@@ -1079,17 +1177,20 @@ function renderWaterfall(rows) {
     container.innerHTML = '';
     sorted.forEach(r => {
         const type   = getResourceType(r);
-        const name   = r.name.split('/').pop().split('?')[0] || r.name.split('/').slice(-2).join('/');
-        const left   = (r.startTime / totalMs) * 100;
-        const width  = Math.max((r.duration / totalMs) * 100, 0.3);
+        const rawName = String(r.name ?? '(unknown)');
+        const name   = rawName.split('/').pop().split('?')[0] || rawName.split('/').slice(-2).join('/');
+        const start  = Number(r.startTime) || 0;
+        const dur    = Number(r.duration) || 0;
+        const left   = (start / totalMs) * 100;
+        const width  = Math.max((dur / totalMs) * 100, 0.3);
         const row    = document.createElement('li');
         row.className = 'wf-row';
         row.innerHTML = `
-            <span class="wf-name" title="${escHtml(r.name)}">${escHtml(name)}</span>
+            <span class="wf-name" title="${escHtml(rawName)}">${escHtml(name)}</span>
             <div class="wf-bar-track">
                 <div class="wf-bar" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${RESOURCE_COLORS[type] ?? '#717a96'}"></div>
             </div>
-            <span class="wf-dur">${Math.round(r.duration).toLocaleString()}ms</span>
+            <span class="wf-dur">${Math.round(dur).toLocaleString()}ms</span>
         `;
         container.appendChild(row);
     });
@@ -1792,6 +1893,29 @@ function refreshAllSections() {
     const vitalsInRange        = getTimeFilteredVitals(cachedVitals);
     const filteredTechno      = getFilteredTechno(cachedTechno);
 
+    console.log('[diag] filteredRows total:', filteredRows.length);
+    console.log('[diag] event_type values:', [...new Set(filteredRows.map(r => r.event_type))]);
+
+    const resourceRows = filteredRows.filter(r => r.event_type === 'resource');
+    console.log('[diag] resource rows:', resourceRows.length);
+
+    if (resourceRows.length > 0) {
+        console.log('[diag] first resource row keys:', Object.keys(resourceRows[0]));
+        console.log(
+            '[diag] first resource raw_payload (first 300 chars):',
+            String(resourceRows[0].raw_payload ?? '').slice(0, 300)
+        );
+    } else {
+        const sample = filteredRows.slice(0, 3);
+        sample.forEach((r, i) => {
+            console.log(`[diag] row[${i}] event_type=${r.event_type} keys:`, Object.keys(r));
+            console.log(
+                `[diag] row[${i}] raw_payload (first 300):`,
+                String(r.raw_payload ?? '').slice(0, 300)
+            );
+        });
+    }
+
     const { urlMap, bounceSessions } =
         buildAggregates(filteredRows, filteredSessionData);
 
@@ -1801,10 +1925,22 @@ function refreshAllSections() {
 
     const uniqueErrorMap = buildUniqueErrorMap(cachedErrors);
     renderUnderperf(urlMap, bounceSessions, uniqueErrorMap);
-    const { resources, typeMap, sizeMap, cacheRate } = buildResourceBreakdownFromRows(filteredRows);
-    renderResourceBreakdown(typeMap, sizeMap, resources.length, cacheRate);
-    renderSlowestRequests(filteredRows);
-    renderWaterfall(filteredRows);
+    const {
+        resourceEntries,
+        typeMap,
+        sizeMap,
+        totalResources,
+        cacheRate,
+        hasResourceDetail,
+        hasAnyResourceSignal,
+        emptyReason,
+    } = extractResourceData(filteredRows);
+    renderResourceBreakdown(typeMap, sizeMap, totalResources, cacheRate, {
+        hasResourceDetail,
+        hasAnyResourceSignal,
+    });
+    renderSlowestRequests(resourceEntries, emptyReason);
+    renderWaterfall(resourceEntries, filteredRows, emptyReason);
 
     // Populate selects
     populateTrendSelect(urlMap);
