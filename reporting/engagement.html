@@ -199,6 +199,30 @@
       </figure>
       <p class="fineprint">Shows the 10 most recent sessions</p>
     </section>
+
+    <section aria-labelledby="analyst-notes-heading" class="table-section analyst-notes">
+      <header class="section-header">
+        <h2 id="analyst-notes-heading">Analyst Notes</h2>
+        <p class="section-subtitle">Summarize what the engagement trends mean and recommended actions.</p>
+      </header>
+      <textarea id="analystNotes" class="notes-input" rows="6" placeholder="Write your interpretation and recommendations here..."></textarea>
+      <div class="notes-meta" id="notesMeta">Not saved yet</div>
+    </section>
+
+    <section aria-labelledby="comments-heading" class="table-section comments-section">
+      <header class="section-header">
+        <h2 id="comments-heading">Analyst Comments</h2>
+        <p class="section-subtitle">Short observations from anyone reviewing this report.</p>
+      </header>
+      <form id="commentForm" class="comment-form">
+        <label class="sr-only" for="commentName">Name</label>
+        <input id="commentName" name="name" type="text" placeholder="Your name" required />
+        <label class="sr-only" for="commentText">Comment</label>
+        <textarea id="commentText" name="comment" rows="3" placeholder="Your comment..." required></textarea>
+        <button class="button-link" type="submit">Add Comment</button>
+      </form>
+      <div id="commentList" class="comment-list" aria-live="polite"></div>
+    </section>
   </main>
 
   <script type="module" src="engagement.js"></script>
