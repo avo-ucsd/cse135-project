@@ -407,6 +407,66 @@
   white-space: pre-wrap;
 }
 
+.comment-actions {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.comment-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #c0c8e0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.comment-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.comment-btn.secondary {
+  color: #9aa3bf;
+}
+
+.comment-btn.danger {
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #f87171;
+}
+
+.comment-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
+
+.comment-card-editing {
+  border-color: rgba(185, 79, 247, 0.35);
+  background: rgba(185, 79, 247, 0.06);
+}
+
+.comment-edit-name,
+.comment-edit-text {
+  width: 100%;
+  background: rgba(15, 17, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  color: #e8eaf0;
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+}
+
+.comment-edit-name {
+  margin-bottom: 0.5rem;
+}
+
+.comment-edit-text {
+  resize: vertical;
+  min-height: 90px;
+}
+
 @media (max-width: 700px) {
   .page-actions {
     align-items: stretch;

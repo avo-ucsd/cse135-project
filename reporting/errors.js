@@ -1123,24 +1123,59 @@ function initComments() {
   const category = 'Errors';
   const page = 'errors';
 
+  function commentCardHtml(c) {
+    const id = Number(c.id ?? 0);
+    const name = c.analyst_name ?? c.name ?? 'Anonymous';
+    const text = c.message ?? c.text ?? '';
+    const created = c.created_at ?? c.createdAt ?? new Date().toISOString();
+    const nameEnc = encodeURIComponent(name);
+    const textEnc = encodeURIComponent(text);
+    const createdEnc = encodeURIComponent(created);
+
+    return `
+      <div class="comment-card" data-id="${id}" data-name-enc="${nameEnc}" data-text-enc="${textEnc}" data-created-enc="${createdEnc}">
+        <div class="comment-meta">${escHtml(name)} · ${escHtml(formatDateTime(created))}</div>
+        <div class="comment-text">${escHtml(text)}</div>
+        <div class="comment-actions">
+          <button class="comment-btn" type="button" data-action="edit" data-id="${id}">Edit</button>
+          <button class="comment-btn danger" type="button" data-action="delete" data-id="${id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderInlineEditor(card) {
+    const id = Number(card.dataset.id || 0);
+    const name = decodeURIComponent(card.dataset.nameEnc || 'Anonymous');
+    const text = decodeURIComponent(card.dataset.textEnc || '');
+    const created = decodeURIComponent(card.dataset.createdEnc || new Date().toISOString());
+
+    card.classList.add('comment-card-editing');
+    card.innerHTML = `
+      <div class="comment-meta">Editing comment · ${escHtml(formatDateTime(created))}</div>
+      <input class="comment-edit-name" type="text" value="${escHtml(name)}" maxlength="100" />
+      <textarea class="comment-edit-text" rows="4" maxlength="5000">${escHtml(text)}</textarea>
+      <div class="comment-actions">
+        <button class="comment-btn" type="button" data-action="save-edit" data-id="${id}">Save</button>
+        <button class="comment-btn secondary" type="button" data-action="cancel-edit" data-id="${id}">Cancel</button>
+      </div>
+    `;
+  }
+
+  function restoreCard(card) {
+    const id = Number(card.dataset.id || 0);
+    const name = decodeURIComponent(card.dataset.nameEnc || 'Anonymous');
+    const text = decodeURIComponent(card.dataset.textEnc || '');
+    const created = decodeURIComponent(card.dataset.createdEnc || new Date().toISOString());
+    card.outerHTML = commentCardHtml({ id, analyst_name: name, message: text, created_at: created });
+  }
+
   function render(comments) {
     if (!comments.length) {
       list.innerHTML = '<p class="empty-state">No comments yet.</p>';
       return;
     }
-    list.innerHTML = comments
-      .map(c => {
-        const name = c.analyst_name ?? c.name ?? 'Anonymous';
-        const text = c.message ?? c.text ?? '';
-        const created = c.created_at ?? c.createdAt ?? new Date().toISOString();
-        return `
-          <div class="comment-card">
-            <div class="comment-meta">${escHtml(name)} · ${escHtml(formatDateTime(created))}</div>
-            <div class="comment-text">${escHtml(text)}</div>
-          </div>
-        `;
-      })
-      .join('');
+    list.innerHTML = comments.map(commentCardHtml).join('');
   }
 
   async function refreshComments() {
@@ -1188,6 +1223,75 @@ function initComments() {
     } catch (err) {
       console.error('[comments] post failed', err);
       window.alert('Failed to save comment on server. Please try again.');
+    }
+  });
+
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action][data-id]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    if (!id) return;
+    const card = btn.closest('.comment-card');
+    if (!card) return;
+
+    const action = btn.dataset.action;
+    if (action === 'delete') {
+      const ok = window.confirm('Delete this comment?');
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`${BASE}/comments/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        await refreshComments();
+      } catch (err) {
+        console.error('[comments] delete failed', err);
+        window.alert('Failed to delete comment on server.');
+      }
+      return;
+    }
+
+    if (action === 'edit') {
+      renderInlineEditor(card);
+      return;
+    }
+
+    if (action === 'cancel-edit') {
+      restoreCard(card);
+      return;
+    }
+
+    if (action === 'save-edit') {
+      const nameInput = card.querySelector('.comment-edit-name');
+      const textInput = card.querySelector('.comment-edit-text');
+      const trimmedName = (nameInput?.value ?? '').trim();
+      const trimmedText = (textInput?.value ?? '').trim();
+      if (!trimmedName || !trimmedText) {
+        window.alert('Name and comment are required.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${BASE}/comments/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            analyst_name: trimmedName,
+            message: trimmedText,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        await refreshComments();
+      } catch (err) {
+        console.error('[comments] edit failed', err);
+        window.alert('Failed to edit comment on server.');
+      }
+      return;
     }
   });
 

@@ -25,6 +25,8 @@
  *   GET    /api/comments            - List analyst comments (filterable)
  *   GET    /api/comments/{id}       - Single analyst comment by ID
  *   POST   /api/comments            - Insert analyst comment
+ *   PUT    /api/comments/{id}       - Update analyst comment
+ *   DELETE /api/comments/{id}       - Delete analyst comment
  *
  *   GET    /api/notes               - List analyst notes (filterable)
  *   GET    /api/notes/{id}          - Single analyst note by ID
@@ -584,6 +586,49 @@ switch ($resource) {
 
                 $newId = (int)$pdo->lastInsertId();
                 respond(201, ['status' => 'created', 'id' => $newId]);
+                break;
+
+            case 'PUT':
+                // PUT /api/comments/{id}
+                $commentId = requireId($id);
+                $b = readBody();
+                if (empty($b)) respond(400, ['error' => 'Request body is empty or invalid JSON']);
+
+                $name = trim((string)($b['analyst_name'] ?? ''));
+                $message = trim((string)($b['message'] ?? ''));
+
+                if ($name === '' && $message === '') {
+                    respond(400, ['error' => 'Provide at least one field: analyst_name or message']);
+                }
+                if ($name !== '' && strLenSafe($name) > 100) respond(400, ['error' => 'Field "analyst_name" is too long']);
+                if ($message !== '' && strLenSafe($message) > 5000) respond(400, ['error' => 'Field "message" is too long']);
+
+                $sets = [];
+                $params = [':id' => $commentId];
+                if ($name !== '') {
+                    $sets[] = 'analyst_name = :analyst_name';
+                    $params[':analyst_name'] = $name;
+                }
+                if ($message !== '') {
+                    $sets[] = 'message = :message';
+                    $params[':message'] = $message;
+                }
+
+                $sql = "UPDATE analyst_comments SET " . implode(', ', $sets) . " WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+                if ($stmt->rowCount() === 0) respond(404, ['error' => "Comment #$commentId not found or no change"]);
+
+                respond(200, ['status' => 'updated', 'id' => (int)$commentId]);
+                break;
+
+            case 'DELETE':
+                // DELETE /api/comments/{id}
+                $commentId = requireId($id);
+                $stmt = $pdo->prepare("DELETE FROM analyst_comments WHERE id = :id");
+                $stmt->execute([':id' => $commentId]);
+                if ($stmt->rowCount() === 0) respond(404, ['error' => "Comment #$commentId not found"]);
+                respond(200, ['status' => 'deleted', 'id' => (int)$commentId]);
                 break;
 
             default:
