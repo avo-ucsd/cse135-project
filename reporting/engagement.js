@@ -679,6 +679,276 @@ function showError(msg) {
   document.querySelector('main')?.prepend(b);
 }
 
+function getReportId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('reportId') || 'current';
+}
+
+function formatDateTime(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function initAnalystNotes() {
+  const notes = document.getElementById('analystNotes');
+  const meta = document.getElementById('notesMeta');
+  if (!notes || !meta) return;
+
+  const reportId = getReportId();
+  const category = 'Engagement';
+  const page = 'engagement';
+  meta.textContent = 'Loading note...';
+
+  async function loadNote() {
+    try {
+      const q = new URLSearchParams({
+        category,
+        page,
+        report_id: reportId,
+        limit: '1',
+      });
+      const res = await apiFetch(`/notes?${q.toString()}`);
+      const row = (res.data ?? [])[0];
+      if (row) {
+        notes.value = row.note_text ?? '';
+        meta.textContent = `Last saved ${formatDateTime(row.updated_at ?? row.created_at)}`;
+      } else {
+        notes.value = '';
+        meta.textContent = 'Not saved yet';
+      }
+    } catch (err) {
+      console.error('[engagement:notes] load failed', err);
+      meta.textContent = 'Could not load note from server';
+    }
+  }
+
+  let saveTimer;
+  notes.addEventListener('input', () => {
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(async () => {
+      const noteText = notes.value.trim();
+      if (!noteText) {
+        meta.textContent = 'Not saved yet';
+        return;
+      }
+
+      try {
+        const res = await fetch(BASE + '/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category,
+            report_id: reportId,
+            page,
+            analyst_name: 'Analyst',
+            note_text: noteText,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        const payload = await res.json();
+        const stampSource = payload?.data?.updated_at ?? payload?.data?.created_at ?? new Date().toISOString();
+        meta.textContent = `Last saved ${formatDateTime(stampSource)}`;
+      } catch (err) {
+        console.error('[engagement:notes] save failed', err);
+        meta.textContent = 'Failed to save note on server';
+      }
+    }, 500);
+  });
+
+  loadNote();
+}
+
+function initComments() {
+  const form = document.getElementById('commentForm');
+  const list = document.getElementById('commentList');
+  if (!form || !list) return;
+
+  const reportId = getReportId();
+  const category = 'Engagement';
+  const page = 'engagement';
+
+  function commentCardHtml(c) {
+    const id = Number(c.id ?? 0);
+    const name = c.analyst_name ?? c.name ?? 'Anonymous';
+    const text = c.message ?? c.text ?? '';
+    const created = c.created_at ?? c.createdAt ?? new Date().toISOString();
+    const nameEnc = encodeURIComponent(name);
+    const textEnc = encodeURIComponent(text);
+    const createdEnc = encodeURIComponent(created);
+
+    return `
+      <div class="comment-card" data-id="${id}" data-name-enc="${nameEnc}" data-text-enc="${textEnc}" data-created-enc="${createdEnc}">
+        <div class="comment-meta">${escHtml(name)} · ${escHtml(formatDateTime(created))}</div>
+        <div class="comment-text">${escHtml(text)}</div>
+        <div class="comment-actions">
+          <button class="comment-btn" type="button" data-action="edit" data-id="${id}">Edit</button>
+          <button class="comment-btn danger" type="button" data-action="delete" data-id="${id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderInlineEditor(card) {
+    const id = Number(card.dataset.id || 0);
+    const name = decodeURIComponent(card.dataset.nameEnc || 'Anonymous');
+    const text = decodeURIComponent(card.dataset.textEnc || '');
+    const created = decodeURIComponent(card.dataset.createdEnc || new Date().toISOString());
+
+    card.classList.add('comment-card-editing');
+    card.innerHTML = `
+      <div class="comment-meta">Editing comment · ${escHtml(formatDateTime(created))}</div>
+      <input class="comment-edit-name" type="text" value="${escHtml(name)}" maxlength="100" />
+      <textarea class="comment-edit-text" rows="4" maxlength="5000">${escHtml(text)}</textarea>
+      <div class="comment-actions">
+        <button class="comment-btn" type="button" data-action="save-edit" data-id="${id}">Save</button>
+        <button class="comment-btn secondary" type="button" data-action="cancel-edit" data-id="${id}">Cancel</button>
+      </div>
+    `;
+  }
+
+  function restoreCard(card) {
+    const id = Number(card.dataset.id || 0);
+    const name = decodeURIComponent(card.dataset.nameEnc || 'Anonymous');
+    const text = decodeURIComponent(card.dataset.textEnc || '');
+    const created = decodeURIComponent(card.dataset.createdEnc || new Date().toISOString());
+    card.outerHTML = commentCardHtml({ id, analyst_name: name, message: text, created_at: created });
+  }
+
+  function render(comments) {
+    if (!comments.length) {
+      list.innerHTML = '<p class="empty-state">No comments yet.</p>';
+      return;
+    }
+    list.innerHTML = comments.map(commentCardHtml).join('');
+  }
+
+  async function refreshComments() {
+    try {
+      const q = new URLSearchParams({
+        category,
+        page,
+        report_id: reportId,
+        limit: '200',
+      });
+      const res = await apiFetch(`/comments?${q.toString()}`);
+      render(res.data ?? []);
+    } catch (err) {
+      console.error('[engagement:comments] load failed', err);
+      list.innerHTML = '<p class="empty-state">Could not load comments from server.</p>';
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = form.name.value.trim();
+    const text = form.comment.value.trim();
+    if (!name || !text) return;
+
+    try {
+      const res = await fetch(BASE + '/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          report_id: reportId,
+          page,
+          analyst_name: name,
+          message: text,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`HTTP ${res.status} ${body}`);
+      }
+
+      form.reset();
+      await refreshComments();
+    } catch (err) {
+      console.error('[engagement:comments] post failed', err);
+      window.alert('Failed to save comment on server. Please try again.');
+    }
+  });
+
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action][data-id]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    if (!id) return;
+    const card = btn.closest('.comment-card');
+    if (!card) return;
+
+    const action = btn.dataset.action;
+    if (action === 'delete') {
+      const ok = window.confirm('Delete this comment?');
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`${BASE}/comments/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        await refreshComments();
+      } catch (err) {
+        console.error('[engagement:comments] delete failed', err);
+        window.alert('Failed to delete comment on server.');
+      }
+      return;
+    }
+
+    if (action === 'edit') {
+      renderInlineEditor(card);
+      return;
+    }
+
+    if (action === 'cancel-edit') {
+      restoreCard(card);
+      return;
+    }
+
+    if (action === 'save-edit') {
+      const nameInput = card.querySelector('.comment-edit-name');
+      const textInput = card.querySelector('.comment-edit-text');
+      const trimmedName = (nameInput?.value ?? '').trim();
+      const trimmedText = (textInput?.value ?? '').trim();
+      if (!trimmedName || !trimmedText) {
+        window.alert('Name and comment are required.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${BASE}/comments/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            analyst_name: trimmedName,
+            message: trimmedText,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        await refreshComments();
+      } catch (err) {
+        console.error('[engagement:comments] edit failed', err);
+        window.alert('Failed to edit comment on server.');
+      }
+      return;
+    }
+  });
+
+  refreshComments();
+}
+
 async function init() {
   try {
     const [sessionsRes, pageviewsRes] = await Promise.all([
@@ -699,6 +969,8 @@ async function init() {
     populateFilterOptions(state.sessions);
     renderAggregation(state.filtered);
     bindEvents();
+    initAnalystNotes();
+    initComments();
   } catch (err) {
     console.error('[engagement]', err);
     showError(err.message);

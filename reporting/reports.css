@@ -1,0 +1,98 @@
+/* ============================================================
+   reports.css — Reports page styles
+   Extends analytics.css
+   ============================================================ */
+
+.page-subtitle {
+  font-size: 0.85rem;
+  color: #717a96;
+}
+
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.reports-table th,
+.reports-table td {
+  padding: 0.85rem 0.9rem;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.reports-table thead th {
+  color: #717a96;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reports-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.12s;
+}
+
+.reports-table tbody tr:hover {
+  background: rgba(185, 79, 247, 0.08);
+  cursor: pointer;
+}
+
+.report-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(185, 79, 247, 0.15);
+  color: #b94ff7;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.report-pill.status-ready {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+}
+
+.report-pill.status-pending {
+  background: rgba(247, 162, 79, 0.16);
+  color: #f7a24f;
+}
+
+.report-open {
+  color: #c0c8e0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.report-open:hover {
+  color: #b94ff7;
+}
+
+.empty-state {
+  color: #717a96;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 700px) {
+  .reports-table thead {
+    display: none;
+  }
+
+  .reports-table tr {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .reports-table td {
+    padding: 0.1rem 0;
+  }
+}

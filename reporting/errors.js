@@ -76,6 +76,39 @@ function parsePayload(raw, rowUserAgent = '') {
   }
 }
 
+function getReportId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('reportId') || 'current';
+}
+
+function storageKey(suffix) {
+  const reportId = getReportId();
+  return `errors:${reportId}:${suffix}`;
+}
+
+function loadJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function formatDateTime(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  } catch {
+    return '—';
+  }
+}
+
 // ── Time-range filter ─────────────────────────────────────────────────────────
 
 /**
@@ -965,6 +998,11 @@ async function init() {
 
     renderAll(activeRange);
 
+    initReportActions();
+    initAnalystNotes();
+    initComments();
+    maybeAutoPrint();
+
   } catch (err) {
     console.error('[errors]', err);
     showError(err.message);
@@ -972,3 +1010,366 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+function initReportActions() {
+  const saveBtn = document.getElementById('saveReportBtn');
+  const uploadBtn = document.getElementById('uploadReportPdfBtn');
+  const fileInput = document.getElementById('reportPdfInput');
+  if (!saveBtn || !uploadBtn || !fileInput) return;
+
+  function getCurrentReportId() {
+    return getReportId() === 'current' ? '' : getReportId();
+  }
+
+  async function findReportPkByReportId(reportId) {
+    const q = new URLSearchParams({ report_id: reportId, page: 'errors', category: 'Errors', limit: '1' });
+    const res = await apiFetch(`/reports?${q.toString()}`);
+    return Number(res?.data?.[0]?.id ?? 0);
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    const name = window.prompt('Report name:', `Errors Report — ${new Date().toLocaleDateString('en-US')}`);
+    if (!name) return;
+
+    try {
+      const res = await fetch(BASE + '/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'Errors',
+          page: 'errors',
+          report_name: name.trim(),
+          created_by: 'Analyst',
+          source_url: window.location.href,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`HTTP ${res.status} ${body}`);
+      }
+
+      const payload = await res.json();
+      const reportId = payload?.report_id;
+      if (!reportId) throw new Error('Missing report_id from API');
+
+      const baseUrl = window.location.pathname;
+      const printUrl = `${baseUrl}?reportId=${encodeURIComponent(reportId)}&print=1`;
+      window.location.href = printUrl;
+    } catch (err) {
+      console.error('[reports] create failed', err);
+      window.alert('Failed to create server report record.');
+    }
+  });
+
+  uploadBtn.addEventListener('click', () => {
+    const reportId = getCurrentReportId();
+    if (!reportId) {
+      window.alert('Save the report first so a report ID exists, then upload the PDF.');
+      return;
+    }
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async () => {
+    const reportId = getCurrentReportId();
+    const file = fileInput.files?.[0];
+    if (!reportId || !file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      window.alert('Please select a PDF file.');
+      return;
+    }
+
+    try {
+      const reportPk = await findReportPkByReportId(reportId);
+      if (!reportPk) {
+        window.alert('Could not find server report record for this report ID.');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('pdf', file);
+      const up = await fetch(`${BASE}/reports/${reportPk}`, {
+        method: 'POST',
+        body: fd,
+      });
+
+      if (!up.ok) {
+        const body = await up.text();
+        throw new Error(`HTTP ${up.status} ${body}`);
+      }
+
+      window.alert('PDF uploaded to server successfully.');
+    } catch (err) {
+      console.error('[reports] upload failed', err);
+      window.alert('Failed to upload PDF to server.');
+    }
+  });
+}
+
+function initAnalystNotes() {
+  const notes = document.getElementById('analystNotes');
+  const meta = document.getElementById('notesMeta');
+  if (!notes || !meta) return;
+
+  const reportId = getReportId();
+  const category = 'Errors';
+  const page = 'errors';
+  meta.textContent = 'Loading note...';
+
+  async function loadNote() {
+    try {
+      const q = new URLSearchParams({
+        category,
+        page,
+        report_id: reportId,
+        limit: '1',
+      });
+      const res = await apiFetch(`/notes?${q.toString()}`);
+      const row = (res.data ?? [])[0];
+      if (row) {
+        notes.value = row.note_text ?? '';
+        meta.textContent = `Last saved ${formatDateTime(row.updated_at ?? row.created_at)}`;
+      } else {
+        notes.value = '';
+        meta.textContent = 'Not saved yet';
+      }
+    } catch (err) {
+      console.error('[notes] load failed', err);
+      meta.textContent = 'Could not load note from server';
+    }
+  }
+
+  let saveTimer;
+  notes.addEventListener('input', () => {
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(async () => {
+      const noteText = notes.value.trim();
+      if (!noteText) {
+        meta.textContent = 'Not saved yet';
+        return;
+      }
+
+      try {
+        const res = await fetch(BASE + '/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category,
+            report_id: reportId,
+            page,
+            analyst_name: 'Analyst',
+            note_text: noteText,
+          }),
+        });
+
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+
+        const payload = await res.json();
+        const stampSource = payload?.data?.updated_at ?? payload?.data?.created_at ?? new Date().toISOString();
+        meta.textContent = `Last saved ${formatDateTime(stampSource)}`;
+      } catch (err) {
+        console.error('[notes] save failed', err);
+        meta.textContent = 'Failed to save note on server';
+      }
+    }, 500);
+  });
+
+  loadNote();
+}
+
+function initComments() {
+  const form = document.getElementById('commentForm');
+  const list = document.getElementById('commentList');
+  if (!form || !list) return;
+
+  const reportId = getReportId();
+  const category = 'Errors';
+  const page = 'errors';
+
+  function commentCardHtml(c) {
+    const id = Number(c.id ?? 0);
+    const name = c.analyst_name ?? c.name ?? 'Anonymous';
+    const text = c.message ?? c.text ?? '';
+    const created = c.created_at ?? c.createdAt ?? new Date().toISOString();
+    const nameEnc = encodeURIComponent(name);
+    const textEnc = encodeURIComponent(text);
+    const createdEnc = encodeURIComponent(created);
+
+    return `
+      <div class="comment-card" data-id="${id}" data-name-enc="${nameEnc}" data-text-enc="${textEnc}" data-created-enc="${createdEnc}">
+        <div class="comment-meta">${escHtml(name)} · ${escHtml(formatDateTime(created))}</div>
+        <div class="comment-text">${escHtml(text)}</div>
+        <div class="comment-actions">
+          <button class="comment-btn" type="button" data-action="edit" data-id="${id}">Edit</button>
+          <button class="comment-btn danger" type="button" data-action="delete" data-id="${id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderInlineEditor(card) {
+    const id = Number(card.dataset.id || 0);
+    const name = decodeURIComponent(card.dataset.nameEnc || 'Anonymous');
+    const text = decodeURIComponent(card.dataset.textEnc || '');
+    const created = decodeURIComponent(card.dataset.createdEnc || new Date().toISOString());
+
+    card.classList.add('comment-card-editing');
+    card.innerHTML = `
+      <div class="comment-meta">Editing comment · ${escHtml(formatDateTime(created))}</div>
+      <input class="comment-edit-name" type="text" value="${escHtml(name)}" maxlength="100" />
+      <textarea class="comment-edit-text" rows="4" maxlength="5000">${escHtml(text)}</textarea>
+      <div class="comment-actions">
+        <button class="comment-btn" type="button" data-action="save-edit" data-id="${id}">Save</button>
+        <button class="comment-btn secondary" type="button" data-action="cancel-edit" data-id="${id}">Cancel</button>
+      </div>
+    `;
+  }
+
+  function restoreCard(card) {
+    const id = Number(card.dataset.id || 0);
+    const name = decodeURIComponent(card.dataset.nameEnc || 'Anonymous');
+    const text = decodeURIComponent(card.dataset.textEnc || '');
+    const created = decodeURIComponent(card.dataset.createdEnc || new Date().toISOString());
+    card.outerHTML = commentCardHtml({ id, analyst_name: name, message: text, created_at: created });
+  }
+
+  function render(comments) {
+    if (!comments.length) {
+      list.innerHTML = '<p class="empty-state">No comments yet.</p>';
+      return;
+    }
+    list.innerHTML = comments.map(commentCardHtml).join('');
+  }
+
+  async function refreshComments() {
+    try {
+      const q = new URLSearchParams({
+        category,
+        page,
+        report_id: reportId,
+        limit: '200',
+      });
+      const res = await apiFetch(`/comments?${q.toString()}`);
+      render(res.data ?? []);
+    } catch (err) {
+      console.error('[comments] load failed', err);
+      list.innerHTML = '<p class="empty-state">Could not load comments from server.</p>';
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = form.name.value.trim();
+    const text = form.comment.value.trim();
+    if (!name || !text) return;
+
+    try {
+      const res = await fetch(BASE + '/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          report_id: reportId,
+          page,
+          analyst_name: name,
+          message: text,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`HTTP ${res.status} ${body}`);
+      }
+
+      form.reset();
+      await refreshComments();
+    } catch (err) {
+      console.error('[comments] post failed', err);
+      window.alert('Failed to save comment on server. Please try again.');
+    }
+  });
+
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action][data-id]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    if (!id) return;
+    const card = btn.closest('.comment-card');
+    if (!card) return;
+
+    const action = btn.dataset.action;
+    if (action === 'delete') {
+      const ok = window.confirm('Delete this comment?');
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`${BASE}/comments/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        await refreshComments();
+      } catch (err) {
+        console.error('[comments] delete failed', err);
+        window.alert('Failed to delete comment on server.');
+      }
+      return;
+    }
+
+    if (action === 'edit') {
+      renderInlineEditor(card);
+      return;
+    }
+
+    if (action === 'cancel-edit') {
+      restoreCard(card);
+      return;
+    }
+
+    if (action === 'save-edit') {
+      const nameInput = card.querySelector('.comment-edit-name');
+      const textInput = card.querySelector('.comment-edit-text');
+      const trimmedName = (nameInput?.value ?? '').trim();
+      const trimmedText = (textInput?.value ?? '').trim();
+      if (!trimmedName || !trimmedText) {
+        window.alert('Name and comment are required.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${BASE}/comments/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            analyst_name: trimmedName,
+            message: trimmedText,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+        await refreshComments();
+      } catch (err) {
+        console.error('[comments] edit failed', err);
+        window.alert('Failed to edit comment on server.');
+      }
+      return;
+    }
+  });
+
+  refreshComments();
+}
+
+function maybeAutoPrint() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('print') === '1') {
+    window.setTimeout(() => window.print(), 600);
+  }
+}
