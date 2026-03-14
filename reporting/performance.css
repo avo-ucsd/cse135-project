@@ -231,6 +231,52 @@
     opacity: .7;
 }
 
+/* ── Tier 1.5: Long Tasks ───────────────────────────────────────────── */
+.longtasks-section {
+    padding: 1.5rem var(--gap);
+    border-top: 1px solid var(--border);
+}
+
+.longtask-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: .8rem;
+    list-style: none;
+    padding: 0;
+    margin: .9rem 0 1rem;
+}
+
+.longtask-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: .85rem 1rem;
+    min-height: 84px;
+}
+
+.longtask-label {
+    color: var(--text-muted);
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin: 0 0 .3rem;
+}
+
+.longtask-value {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.longtask-note {
+    margin: 0 0 1rem;
+    font-size: .76rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 /* ── Tier 2: Resource breakdown ──────────────────────────────────────── */
 .resources-section {
     padding: 1.5rem var(--gap);

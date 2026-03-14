@@ -13,6 +13,7 @@ const VITAL_THRESHOLDS = {
 };
 
 const VITAL_WEIGHTS = { LCP: 1, INP: 1, CLS: 1 };
+const LONG_TASK_THRESHOLD_MS = 50;
 
 //  Cached API data (fetched once, re-filtered on every refresh) 
 let cachedRows        = [];
@@ -24,6 +25,13 @@ let cachedErrors      = [];
 //  AbortControllers for chart mouse listeners 
 let trendAbort       = null;
 let sparklineAbortMap = new Map();
+
+const liveLongTask = {
+    supported: false,
+    count: 0,
+    totalBlockingMs: 0,
+    maxDurationMs: 0,
+};
 
 //  API helper 
 
@@ -105,6 +113,70 @@ function percentile(arr, p) {
     const sorted = [...arr].sort((a, b) => a - b);
     const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor(sorted.length * p)));
     return sorted[idx];
+}
+
+function normalizeRatingLabel(value) {
+    const rating = String(value ?? '').trim().toLowerCase();
+    if (rating === 'good') return 'good';
+    if (rating === 'poor') return 'poor';
+    if (rating === 'needs-improvement' || rating === 'needs improvement') return 'needs-improvement';
+    return null;
+}
+
+function buildRatingSummary(vitalsData, field) {
+    const summary = { good: 0, needsImprovement: 0, poor: 0, known: 0 };
+
+    for (const row of vitalsData) {
+        const normalized = normalizeRatingLabel(row[field]);
+        if (!normalized) continue;
+        summary.known++;
+        if (normalized === 'good') summary.good++;
+        if (normalized === 'needs-improvement') summary.needsImprovement++;
+        if (normalized === 'poor') summary.poor++;
+    }
+
+    return summary;
+}
+
+function formatRatingSummary(summary) {
+    if (!summary || summary.known <= 0) return '';
+    return ` · G ${summary.good} / NI ${summary.needsImprovement} / P ${summary.poor}`;
+}
+
+function getLongTaskMetricsFromRow(row) {
+    const directCount = Number(row.longtask_count);
+    const directBlocking = Number(row.longtask_total_blocking_ms);
+    const directMax = Number(row.longtask_max_duration_ms);
+
+    if (Number.isFinite(directCount) || Number.isFinite(directBlocking) || Number.isFinite(directMax)) {
+        return {
+            count: Number.isFinite(directCount) ? directCount : 0,
+            blockingMs: Number.isFinite(directBlocking) ? directBlocking : 0,
+            maxDurationMs: Number.isFinite(directMax) ? directMax : 0,
+            source: 'columns',
+        };
+    }
+
+    if (typeof row.raw_payload !== 'string' || !row.raw_payload.trim()) {
+        return { count: 0, blockingMs: 0, maxDurationMs: 0, source: null };
+    }
+
+    try {
+        const payload = JSON.parse(row.raw_payload);
+        const lt = payload?.longTasks;
+        if (!lt || typeof lt !== 'object') {
+            return { count: 0, blockingMs: 0, maxDurationMs: 0, source: null };
+        }
+
+        return {
+            count: Number.isFinite(Number(lt.count)) ? Number(lt.count) : 0,
+            blockingMs: Number.isFinite(Number(lt.totalBlockingMs)) ? Number(lt.totalBlockingMs) : 0,
+            maxDurationMs: Number.isFinite(Number(lt.maxDurationMs)) ? Number(lt.maxDurationMs) : 0,
+            source: 'raw_payload',
+        };
+    } catch {
+        return { count: 0, blockingMs: 0, maxDurationMs: 0, source: null };
+    }
 }
 
 //  Error banner 
@@ -408,10 +480,13 @@ function renderVitalsFromApiData(vitalsData) {
     const lcpSeries = buildSparklineSeries(vitalsData, 'vital_lcp');
     const clsSeries = buildSparklineSeries(vitalsData, 'vital_cls');
     const inpSeries = buildSparklineSeries(vitalsData, 'vital_inp');
+    const lcpRatings = buildRatingSummary(vitalsData, 'webvitals_rating_lcp');
+    const clsRatings = buildRatingSummary(vitalsData, 'webvitals_rating_cls');
+    const inpRatings = buildRatingSummary(vitalsData, 'webvitals_rating_inp');
 
     if (lcpStat != null) {
         setVitalMeta('LCP', lcpVals.length);
-        renderVital('LCP', lcpStat, 2500, 4000, `${statLabel} · ${lcpVals.length} samples`, lcpSeries);
+        renderVital('LCP', lcpStat, 2500, 4000, `${statLabel} · ${lcpVals.length} samples${formatRatingSummary(lcpRatings)}`, lcpSeries);
     } else {
         setVitalMeta('LCP', 0);
         setVitalEmpty('LCP', 'No data in range');
@@ -419,7 +494,7 @@ function renderVitalsFromApiData(vitalsData) {
 
     if (clsStat != null) {
         setVitalMeta('CLS', clsVals.length);
-        renderVital('CLS', clsStat, 0.1, 0.25, `${statLabel} · ${clsVals.length} samples`, clsSeries);
+        renderVital('CLS', clsStat, 0.1, 0.25, `${statLabel} · ${clsVals.length} samples${formatRatingSummary(clsRatings)}`, clsSeries);
     } else {
         setVitalMeta('CLS', 0);
         setVitalEmpty('CLS', 'No data in range');
@@ -427,7 +502,7 @@ function renderVitalsFromApiData(vitalsData) {
 
     if (inpStat != null) {
         setVitalMeta('INP', inpVals.length);
-        renderVital('INP', inpStat, 200, 500, `${statLabel} · ${inpVals.length} samples`, inpSeries);
+        renderVital('INP', inpStat, 200, 500, `${statLabel} · ${inpVals.length} samples${formatRatingSummary(inpRatings)}`, inpSeries);
     } else {
         setVitalMeta('INP', 0);
         setVitalEmpty('INP', 'No data in range');
@@ -633,6 +708,143 @@ function refreshVitalsSection(vitalsData) {
 
     renderVitalsWorstTable(entries, vitalsData);
     renderVitalsFromApiData(getVitalsForPage(vitalsData, vitalsPage));
+}
+
+//  Tier 1.5: Long Tasks
+
+function initLongTaskObserver() {
+    if (typeof window.PerformanceObserver === 'undefined') return;
+    try {
+        const observer = new PerformanceObserver((list) => {
+            liveLongTask.supported = true;
+            for (const entry of list.getEntries()) {
+                const duration = Number(entry.duration ?? 0);
+                if (!Number.isFinite(duration) || duration <= 0) continue;
+                const blocking = Math.max(0, duration - LONG_TASK_THRESHOLD_MS);
+                liveLongTask.count += 1;
+                liveLongTask.totalBlockingMs += blocking;
+                liveLongTask.maxDurationMs = Math.max(liveLongTask.maxDurationMs, duration);
+            }
+            renderLongTaskSection(getFilteredRows(cachedRows));
+        });
+        observer.observe({ type: 'longtask', buffered: true });
+        liveLongTask.supported = true;
+    } catch {
+        liveLongTask.supported = false;
+    }
+}
+
+function renderLongTaskSection(rows) {
+    const sessionCountEl = document.querySelector('[data-longtask-session-count]');
+    const avgBlockingEl = document.querySelector('[data-longtask-avg-blocking]');
+    const maxTaskEl = document.querySelector('[data-longtask-max-task]');
+    const tbody = document.querySelector('[data-longtask-rows]');
+    const sourceEl = document.querySelector('[data-longtask-source]');
+
+    if (!sessionCountEl || !avgBlockingEl || !maxTaskEl || !tbody) return;
+
+    const byPage = new Map();
+    const sessionsWithLongTasks = new Set();
+    let totalBlockingMs = 0;
+    let worstTaskMs = 0;
+    let hasColumnData = false;
+    let hasPayloadData = false;
+
+    for (const row of rows) {
+        const metrics = getLongTaskMetricsFromRow(row);
+        const count = Number(metrics.count ?? 0);
+        const blocking = Number(metrics.blockingMs ?? 0);
+        const maxDuration = Number(metrics.maxDurationMs ?? 0);
+
+        if (metrics.source === 'columns') hasColumnData = true;
+        if (metrics.source === 'raw_payload') hasPayloadData = true;
+
+        if (!Number.isFinite(count) || !Number.isFinite(blocking) || !Number.isFinite(maxDuration)) continue;
+        if (count <= 0 && blocking <= 0 && maxDuration <= 0) continue;
+
+        if (row.session_id) sessionsWithLongTasks.add(row.session_id);
+        totalBlockingMs += Math.max(0, blocking);
+        worstTaskMs = Math.max(worstTaskMs, maxDuration);
+
+        const page = row.url ?? '(unknown)';
+        if (!byPage.has(page)) {
+            byPage.set(page, {
+                page,
+                sessions: new Set(),
+                totalBlockingMs: 0,
+                maxDurationMs: 0,
+            });
+        }
+
+        const entry = byPage.get(page);
+        if (row.session_id) entry.sessions.add(row.session_id);
+        entry.totalBlockingMs += Math.max(0, blocking);
+        entry.maxDurationMs = Math.max(entry.maxDurationMs, maxDuration);
+    }
+
+    if (liveLongTask.count > 0) {
+        totalBlockingMs += liveLongTask.totalBlockingMs;
+        worstTaskMs = Math.max(worstTaskMs, liveLongTask.maxDurationMs);
+    }
+
+    const sessionCount = sessionsWithLongTasks.size;
+    const avgBlocking = sessionCount > 0 ? totalBlockingMs / sessionCount : null;
+
+    sessionCountEl.textContent = sessionCount.toLocaleString();
+    avgBlockingEl.textContent = avgBlocking != null ? fmtMs(avgBlocking) : (liveLongTask.count > 0 ? fmtMs(liveLongTask.totalBlockingMs) : '-');
+    maxTaskEl.textContent = worstTaskMs > 0 ? fmtMs(worstTaskMs) : '-';
+
+    if (sourceEl) {
+        if (hasColumnData) {
+            sourceEl.textContent = 'Source: historical rows (API columns) with live observer fallback.';
+        } else if (hasPayloadData) {
+            sourceEl.textContent = 'Source: historical rows parsed from raw payload plus live observer fallback.';
+        } else if (liveLongTask.count > 0) {
+            sourceEl.textContent = 'Source: live observer only (historical long-task fields unavailable in API rows).';
+        } else if (liveLongTask.supported) {
+            sourceEl.textContent = 'Source: waiting for long-task events in this tab.';
+        } else {
+            sourceEl.textContent = 'Source: Long Tasks API not supported in this browser.';
+        }
+    }
+
+    const rowsForTable = [...byPage.values()]
+        .sort((a, b) => b.totalBlockingMs - a.totalBlockingMs)
+        .slice(0, 8);
+
+    if (rowsForTable.length === 0) {
+        if (liveLongTask.count > 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td style="color:var(--text-muted)">1</td>
+                    <td data-col="page">Current dashboard page</td>
+                    <td>-</td>
+                    <td>${escHtml(fmtMs(liveLongTask.totalBlockingMs))}</td>
+                    <td>${escHtml(fmtMs(liveLongTask.totalBlockingMs))}</td>
+                    <td>${escHtml(fmtMs(liveLongTask.maxDurationMs))}</td>
+                </tr>
+            `;
+        } else {
+            const msg = liveLongTask.supported
+                ? 'No long-task data in selected range'
+                : 'Long Tasks API not supported in this browser';
+            tbody.innerHTML = `<tr><td colspan="6" class="null-val" style="text-align:center">${escHtml(msg)}</td></tr>`;
+        }
+        return;
+    }
+
+    tbody.innerHTML = rowsForTable.map((entry, idx) => {
+        const sessionTotal = entry.sessions.size;
+        const avgPerSession = sessionTotal > 0 ? entry.totalBlockingMs / sessionTotal : 0;
+        return `<tr>
+            <td style="color:var(--text-muted)">${idx + 1}</td>
+            <td data-col="page" title="${escHtml(entry.page)}">${escHtml(pathname(entry.page))}</td>
+            <td>${sessionTotal.toLocaleString()}</td>
+            <td>${escHtml(fmtMs(entry.totalBlockingMs))}</td>
+            <td>${escHtml(fmtMs(avgPerSession))}</td>
+            <td>${escHtml(fmtMs(entry.maxDurationMs))}</td>
+        </tr>`;
+    }).join('');
 }
 
 function initCoreWebVitals() {
@@ -1420,6 +1632,7 @@ function refreshAllSections() {
 
     // Tier 1: vitals table + cards (time filter only)
     refreshVitalsSection(vitalsInRange);
+    renderLongTaskSection(filteredRows);
 
     // Tier 3
     renderDeviceSegment(filteredTechno, filteredVitals);
@@ -1465,6 +1678,7 @@ async function init() {
 
     // Start live Core Web Vitals observers immediately
     initCoreWebVitals();
+    initLongTaskObserver();
 
     try {
         const [pageviews, sessions, vitalsResp, technoResp, errorsResp] = await Promise.all([
