@@ -94,7 +94,12 @@
     <section aria-labelledby="aggregation-heading" class="table-section">
       <header class="section-header split-wrap">
         <h2 id="aggregation-heading">Analyst Aggregation</h2>
-        <button type="button" class="link-more button-link" id="printReport">Print / Save PDF</button>
+        <div class="report-actions" role="group" aria-label="Report actions">
+          <button type="button" class="button-link" id="saveReportBtn">Save PDF Report</button>
+          <button type="button" class="button-link" id="uploadReportPdfBtn">Upload Saved PDF</button>
+          <input id="reportPdfInput" type="file" accept="application/pdf" hidden>
+          <a class="link-more button-link" href="reports.html">View Reports</a>
+        </div>
       </header>
       <form class="filter-grid" id="aggregationFilters" aria-label="Engagement aggregation filters">
         <label>

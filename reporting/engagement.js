@@ -667,8 +667,6 @@ function bindEvents() {
     document.getElementById('filterCountry').value = 'all';
     applyFilters();
   });
-
-  document.getElementById('printReport')?.addEventListener('click', () => window.print());
 }
 
 function showError(msg) {
@@ -691,6 +689,111 @@ function formatDateTime(iso) {
     });
   } catch {
     return '—';
+  }
+}
+
+function initReportActions() {
+  const saveBtn = document.getElementById('saveReportBtn');
+  const uploadBtn = document.getElementById('uploadReportPdfBtn');
+  const fileInput = document.getElementById('reportPdfInput');
+  if (!saveBtn || !uploadBtn || !fileInput) return;
+
+  function getCurrentReportId() {
+    return getReportId() === 'current' ? '' : getReportId();
+  }
+
+  async function findReportPkByReportId(reportId) {
+    const q = new URLSearchParams({ report_id: reportId, page: 'engagement', category: 'Engagement', limit: '1' });
+    const res = await apiFetch(`/reports?${q.toString()}`);
+    return Number(res?.data?.[0]?.id ?? 0);
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    const name = window.prompt('Report name:', `Engagement Report — ${new Date().toLocaleDateString('en-US')}`);
+    if (!name) return;
+
+    try {
+      const res = await fetch(BASE + '/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'Engagement',
+          page: 'engagement',
+          report_name: name.trim(),
+          created_by: 'Analyst',
+          source_url: window.location.href,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`HTTP ${res.status} ${body}`);
+      }
+
+      const payload = await res.json();
+      const reportId = payload?.report_id;
+      if (!reportId) throw new Error('Missing report_id from API');
+
+      const baseUrl = window.location.pathname;
+      const printUrl = `${baseUrl}?reportId=${encodeURIComponent(reportId)}&print=1`;
+      window.location.href = printUrl;
+    } catch (err) {
+      console.error('[engagement:reports] create failed', err);
+      window.alert('Failed to create server report record.');
+    }
+  });
+
+  uploadBtn.addEventListener('click', () => {
+    const reportId = getCurrentReportId();
+    if (!reportId) {
+      window.alert('Save the report first so a report ID exists, then upload the PDF.');
+      return;
+    }
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async () => {
+    const reportId = getCurrentReportId();
+    const file = fileInput.files?.[0];
+    if (!reportId || !file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      window.alert('Please select a PDF file.');
+      return;
+    }
+
+    try {
+      const reportPk = await findReportPkByReportId(reportId);
+      if (!reportPk) {
+        window.alert('Could not find server report record for this report ID.');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('pdf', file);
+      const up = await fetch(`${BASE}/reports/${reportPk}`, {
+        method: 'POST',
+        body: fd,
+      });
+
+      if (!up.ok) {
+        const body = await up.text();
+        throw new Error(`HTTP ${up.status} ${body}`);
+      }
+
+      window.alert('PDF uploaded to server successfully.');
+    } catch (err) {
+      console.error('[engagement:reports] upload failed', err);
+      window.alert('Failed to upload PDF to server.');
+    }
+  });
+}
+
+function maybeAutoPrint() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('print') === '1') {
+    window.setTimeout(() => window.print(), 600);
   }
 }
 
@@ -969,8 +1072,10 @@ async function init() {
     populateFilterOptions(state.sessions);
     renderAggregation(state.filtered);
     bindEvents();
+    initReportActions();
     initAnalystNotes();
     initComments();
+    maybeAutoPrint();
   } catch (err) {
     console.error('[engagement]', err);
     showError(err.message);

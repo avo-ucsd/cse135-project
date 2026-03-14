@@ -114,6 +114,12 @@
   color: var(--text);
 }
 
+.report-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* --- Analyst notes + comments ---------------------------- */
 .analyst-notes,
 .comments-section {
