@@ -940,6 +940,40 @@ const RESOURCE_COLORS = {
     Font: '#f87171', API: '#b94ff7', Other: '#717a96',
 };
 
+function extractResourceEntries(rows) {
+    return rows
+        .filter(r => r.event_type === 'resource')
+        .map(r => {
+            try {
+                return JSON.parse(r.raw_payload);
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean)
+        .flat();
+}
+
+function buildResourceBreakdownFromRows(rows) {
+    const resources = extractResourceEntries(rows);
+    const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
+    const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
+    let cached = 0;
+
+    for (const r of resources) {
+        const type = getResourceType(r);
+        typeMap[type] = (typeMap[type] || 0) + 1;
+        sizeMap[type] = (sizeMap[type] || 0) + (Number(r.transferSize) || 0);
+        if (Number(r.transferSize) === 0 && Number(r.decodedBodySize) > 0) cached++;
+    }
+
+    const cacheRate = resources.length > 0
+        ? Math.round((cached / resources.length) * 100)
+        : 0;
+
+    return { resources, typeMap, sizeMap, cacheRate };
+}
+
 function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate) {
     const totalSize = Object.values(sizeMap).reduce((a, b) => a + b, 0);
 
@@ -968,17 +1002,7 @@ function renderSlowestRequests(rows) {
     const tbody = document.querySelector('[data-slow-requests]');
     if (!tbody) return;
 
-    const resources = rows
-        .filter(r => r.event_type === 'resource')
-        .map(r => {
-            try {
-                return JSON.parse(r.raw_payload);
-            } catch {
-                return null;
-            }
-        })
-        .filter(Boolean)
-        .flat();
+    const resources = extractResourceEntries(rows);
 
     const sorted = [...resources]
         .sort((a, b) => b.duration - a.duration)
@@ -1012,17 +1036,7 @@ function renderWaterfall(rows) {
     const container = document.querySelector('[data-waterfall]');
     if (!axis || !container) return;
 
-    const resources = rows
-        .filter(r => r.event_type === 'resource')
-        .map(r => {
-            try {
-                return JSON.parse(r.raw_payload);
-            } catch {
-                return null;
-            }
-        })
-        .filter(Boolean)
-        .flat();
+    const resources = extractResourceEntries(rows);
 
     if (resources.length === 0) {
         container.innerHTML = '<li class="null-val" style="padding:1rem">No resource data available in collected data</li>';
@@ -1030,7 +1044,14 @@ function renderWaterfall(rows) {
     }
 
     const navEntry = rows.find(r => r.event_type === 'navigation');
-    const nav = navEntry ? JSON.parse(navEntry.raw_payload) : null;
+    let nav = null;
+    if (navEntry) {
+        try {
+            nav = JSON.parse(navEntry.raw_payload);
+        } catch {
+            nav = null;
+        }
+    }
     const pageEnd = nav
         ? Math.max(nav.loadEventEnd, ...resources.map(r => r.responseEnd))
         : Math.max(...resources.map(r => r.responseEnd));
@@ -1071,51 +1092,6 @@ function renderWaterfall(rows) {
             <span class="wf-dur">${Math.round(r.duration).toLocaleString()}ms</span>
         `;
         container.appendChild(row);
-    });
-}
-
-function processResources() {
-    window.addEventListener('load', () => {
-        setTimeout(() => {
-            try {
-                const resources = performance.getEntriesByType('resource');
-
-                if (!resources.length) {
-                    renderResourceBreakdown({}, {}, 0, 0);
-                    renderSlowestRequests([]);
-                    renderWaterfall([]);
-                    return;
-                }
-
-                const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
-                const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
-                let cached = 0;
-
-                for (const r of resources) {
-                    const type = getResourceType(r);
-                    typeMap[type] = (typeMap[type] || 0) + 1;
-                    sizeMap[type] = (sizeMap[type] || 0) + (Number(r.transferSize) || 0);
-                    if (Number(r.transferSize) === 0 && Number(r.decodedBodySize) > 0) cached++;
-                }
-
-                const cacheRate = Math.round((cached / resources.length) * 100);
-
-                const rows = [];
-                const nav = performance.getEntriesByType('navigation')[0];
-                if (nav) {
-                    rows.push({ event_type: 'navigation', raw_payload: JSON.stringify(nav) });
-                }
-                for (const r of resources) {
-                    rows.push({ event_type: 'resource', raw_payload: JSON.stringify([r]) });
-                }
-
-                renderResourceBreakdown(typeMap, sizeMap, resources.length, cacheRate);
-                renderSlowestRequests(rows);
-                renderWaterfall(rows);
-            } catch (e) {
-                console.warn('[performance] Resource Timing:', e);
-            }
-        }, 200);
     });
 }
 
@@ -1825,6 +1801,10 @@ function refreshAllSections() {
 
     const uniqueErrorMap = buildUniqueErrorMap(cachedErrors);
     renderUnderperf(urlMap, bounceSessions, uniqueErrorMap);
+    const { resources, typeMap, sizeMap, cacheRate } = buildResourceBreakdownFromRows(filteredRows);
+    renderResourceBreakdown(typeMap, sizeMap, resources.length, cacheRate);
+    renderSlowestRequests(filteredRows);
+    renderWaterfall(filteredRows);
 
     // Populate selects
     populateTrendSelect(urlMap);
@@ -1874,9 +1854,6 @@ function bindFilterControls() {
 //  Init 
 
 async function init() {
-    // Start resource timing collection (runs after page load)
-    processResources();
-
     // Start live Core Web Vitals observers immediately
     initCoreWebVitals();
     initLongTaskObserver();
