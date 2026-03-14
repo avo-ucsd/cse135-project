@@ -43,6 +43,48 @@
   flex-shrink: 0;
 }
 
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.report-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: rgba(185, 79, 247, 0.18);
+  border: 1px solid rgba(185, 79, 247, 0.4);
+  color: #e8eaf0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.action-btn:hover {
+  background: rgba(185, 79, 247, 0.32);
+  border-color: rgba(185, 79, 247, 0.6);
+}
+
+.action-btn.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #c0c8e0;
+}
+
+.action-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 /* --- Range toggle buttons --------------------------------- */
 .range-controls {
   display: flex;
@@ -293,4 +335,87 @@
 
 .rec-meta--warning {
   color: #f7a24f;
+}
+
+/* --- Analyst notes + comments ---------------------------- */
+.analyst-notes,
+.comments-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notes-input {
+  width: 100%;
+  background: rgba(15, 17, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #e8eaf0;
+  font-size: 0.9rem;
+  font-family: var(--font-sans);
+  resize: vertical;
+  min-height: 120px;
+}
+
+.notes-meta {
+  font-size: 0.75rem;
+  color: #717a96;
+}
+
+.comment-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.comment-form input,
+.comment-form textarea {
+  width: 100%;
+  background: rgba(15, 17, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  color: #e8eaf0;
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comment-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.comment-meta {
+  font-size: 0.75rem;
+  color: #717a96;
+  margin-bottom: 0.4rem;
+}
+
+.comment-text {
+  font-size: 0.85rem;
+  color: #c0c8e0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 700px) {
+  .page-actions {
+    align-items: stretch;
+  }
+  .report-actions {
+    width: 100%;
+  }
+  .action-btn {
+    width: 100%;
+    text-align: center;
+  }
 }

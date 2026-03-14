@@ -76,6 +76,39 @@ function parsePayload(raw, rowUserAgent = '') {
   }
 }
 
+function getReportId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('reportId') || 'current';
+}
+
+function storageKey(suffix) {
+  const reportId = getReportId();
+  return `errors:${reportId}:${suffix}`;
+}
+
+function loadJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function formatDateTime(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  } catch {
+    return '—';
+  }
+}
+
 // ── Time-range filter ─────────────────────────────────────────────────────────
 
 /**
@@ -965,6 +998,11 @@ async function init() {
 
     renderAll(activeRange);
 
+    initReportActions();
+    initAnalystNotes();
+    initComments();
+    maybeAutoPrint();
+
   } catch (err) {
     console.error('[errors]', err);
     showError(err.message);
@@ -972,3 +1010,193 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+function initReportActions() {
+  const saveBtn = document.getElementById('saveReportBtn');
+  if (!saveBtn) return;
+
+  saveBtn.addEventListener('click', () => {
+    const name = window.prompt('Report name:', `Errors Report — ${new Date().toLocaleDateString('en-US')}`);
+    if (!name) return;
+
+    const reportId = `errors-${Date.now()}`;
+    const createdAt = new Date().toISOString();
+    const baseUrl = window.location.pathname.replace(/\/reporting\//, '/reporting/');
+    const viewUrl = `${baseUrl}?reportId=${encodeURIComponent(reportId)}`;
+    const printUrl = `${viewUrl}&print=1`;
+
+    const reports = loadJson('analytics:reports', []);
+    reports.unshift({
+      id: reportId,
+      name,
+      category: 'Errors',
+      createdAt,
+      viewUrl,
+      printUrl,
+    });
+    saveJson('analytics:reports', reports);
+
+    window.location.href = printUrl;
+  });
+}
+
+function initAnalystNotes() {
+  const notes = document.getElementById('analystNotes');
+  const meta = document.getElementById('notesMeta');
+  if (!notes || !meta) return;
+
+  const reportId = getReportId();
+  const category = 'Errors';
+  const page = 'errors';
+  meta.textContent = 'Loading note...';
+
+  async function loadNote() {
+    try {
+      const q = new URLSearchParams({
+        category,
+        page,
+        report_id: reportId,
+        limit: '1',
+      });
+      const res = await apiFetch(`/notes?${q.toString()}`);
+      const row = (res.data ?? [])[0];
+      if (row) {
+        notes.value = row.note_text ?? '';
+        meta.textContent = `Last saved ${formatDateTime(row.updated_at ?? row.created_at)}`;
+      } else {
+        notes.value = '';
+        meta.textContent = 'Not saved yet';
+      }
+    } catch (err) {
+      console.error('[notes] load failed', err);
+      meta.textContent = 'Could not load note from server';
+    }
+  }
+
+  let saveTimer;
+  notes.addEventListener('input', () => {
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(async () => {
+      const noteText = notes.value.trim();
+      if (!noteText) {
+        meta.textContent = 'Not saved yet';
+        return;
+      }
+
+      try {
+        const res = await fetch(BASE + '/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category,
+            report_id: reportId,
+            page,
+            analyst_name: 'Analyst',
+            note_text: noteText,
+          }),
+        });
+
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status} ${body}`);
+        }
+
+        const payload = await res.json();
+        const stampSource = payload?.data?.updated_at ?? payload?.data?.created_at ?? new Date().toISOString();
+        meta.textContent = `Last saved ${formatDateTime(stampSource)}`;
+      } catch (err) {
+        console.error('[notes] save failed', err);
+        meta.textContent = 'Failed to save note on server';
+      }
+    }, 500);
+  });
+
+  loadNote();
+}
+
+function initComments() {
+  const form = document.getElementById('commentForm');
+  const list = document.getElementById('commentList');
+  if (!form || !list) return;
+
+  const reportId = getReportId();
+  const category = 'Errors';
+  const page = 'errors';
+
+  function render(comments) {
+    if (!comments.length) {
+      list.innerHTML = '<p class="empty-state">No comments yet.</p>';
+      return;
+    }
+    list.innerHTML = comments
+      .map(c => {
+        const name = c.analyst_name ?? c.name ?? 'Anonymous';
+        const text = c.message ?? c.text ?? '';
+        const created = c.created_at ?? c.createdAt ?? new Date().toISOString();
+        return `
+          <div class="comment-card">
+            <div class="comment-meta">${escHtml(name)} · ${escHtml(formatDateTime(created))}</div>
+            <div class="comment-text">${escHtml(text)}</div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  async function refreshComments() {
+    try {
+      const q = new URLSearchParams({
+        category,
+        page,
+        report_id: reportId,
+        limit: '200',
+      });
+      const res = await apiFetch(`/comments?${q.toString()}`);
+      render(res.data ?? []);
+    } catch (err) {
+      console.error('[comments] load failed', err);
+      list.innerHTML = '<p class="empty-state">Could not load comments from server.</p>';
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = form.name.value.trim();
+    const text = form.comment.value.trim();
+    if (!name || !text) return;
+
+    try {
+      const res = await fetch(BASE + '/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          report_id: reportId,
+          page,
+          analyst_name: name,
+          message: text,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`HTTP ${res.status} ${body}`);
+      }
+
+      form.reset();
+      await refreshComments();
+    } catch (err) {
+      console.error('[comments] post failed', err);
+      window.alert('Failed to save comment on server. Please try again.');
+    }
+  });
+
+  refreshComments();
+}
+
+function maybeAutoPrint() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('print') === '1') {
+    window.setTimeout(() => window.print(), 600);
+  }
+}

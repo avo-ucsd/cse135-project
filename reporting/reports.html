@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports — Team Ate Analytics</title>
+  <link rel="stylesheet" href="analytics.css">
+  <link rel="stylesheet" href="reports.css">
+  <script src="/components/Header.js" defer></script>
+</head>
+<body>
+
+  <site-header></site-header>
+
+  <main>
+    <section class="page-header" aria-labelledby="reports-title">
+      <hgroup>
+        <p class="eyebrow">Analytics</p>
+        <h1 id="reports-title">Reports</h1>
+      </hgroup>
+      <p class="page-subtitle">Saved PDF-ready snapshots for analysts.</p>
+    </section>
+
+    <section class="table-section" aria-labelledby="reports-table-heading">
+      <header class="section-header">
+        <h2 id="reports-table-heading">Saved Reports</h2>
+        <p class="section-subtitle">Click a row to open the PDF print view.</p>
+      </header>
+      <figure>
+        <table class="reports-table">
+          <caption class="sr-only">Saved reports list with name, date, and category.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Category</th>
+              <th scope="col">Saved</th>
+              <th scope="col">Open</th>
+            </tr>
+          </thead>
+          <tbody id="reportsTableBody"></tbody>
+        </table>
+      </figure>
+    </section>
+  </main>
+
+  <script type="module" src="reports.js"></script>
+
+  <footer role="contentinfo">
+    <p>Connected to <abbr title="DigitalOcean Droplet">DO</abbr> / Apache / MySQL; Made with love by Team Ate (and Claude AI)</p>
+  </footer>
+</body>
+</html>

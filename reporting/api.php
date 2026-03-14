@@ -21,6 +21,14 @@
  *
  *   GET    /api/technographics      - All technographic data
  *   GET    /api/technographics/{id} - Single technographic row by pageview ID
+ *
+ *   GET    /api/comments            - List analyst comments (filterable)
+ *   GET    /api/comments/{id}       - Single analyst comment by ID
+ *   POST   /api/comments            - Insert analyst comment
+ *
+ *   GET    /api/notes               - List analyst notes (filterable)
+ *   GET    /api/notes/{id}          - Single analyst note by ID
+ *   POST   /api/notes               - Upsert analyst note
  */
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
@@ -354,6 +362,225 @@ switch ($resource) {
             $row = $stmt->fetch();
             if (!$row) respond(404, ['error' => "Technographics for pageview #$id not found"]);
             respond(200, $row);
+        }
+        break;
+
+    // ── /api/notes ───────────────────────────────────────────────────────────
+    case 'notes':
+        switch ($method) {
+
+            case 'GET':
+                if ($id === null) {
+                    // GET /api/notes?category=Errors&report_id=errors-123&page=errors&limit=100
+                    $limit = min(max((int)($_GET['limit'] ?? 100), 1), 500);
+                    $category = trim((string)($_GET['category'] ?? ''));
+                    $reportId = trim((string)($_GET['report_id'] ?? ''));
+                    $page = trim((string)($_GET['page'] ?? ''));
+
+                    $sql = "
+                        SELECT id, category, report_id, page, analyst_name, note_text, created_at, updated_at
+                        FROM analyst_notes
+                    ";
+                    $where = [];
+                    $params = [];
+
+                    if ($category !== '') {
+                        $where[] = "category = :category";
+                        $params[':category'] = $category;
+                    }
+                    if ($reportId !== '') {
+                        $where[] = "report_id = :report_id";
+                        $params[':report_id'] = $reportId;
+                    }
+                    if ($page !== '') {
+                        $where[] = "page = :page";
+                        $params[':page'] = $page;
+                    }
+
+                    if (!empty($where)) {
+                        $sql .= " WHERE " . implode(' AND ', $where);
+                    }
+
+                    $sql .= " ORDER BY updated_at DESC LIMIT :limit";
+                    $stmt = $pdo->prepare($sql);
+                    foreach ($params as $k => $v) {
+                        $stmt->bindValue($k, $v, PDO::PARAM_STR);
+                    }
+                    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                    $stmt->execute();
+
+                    respond(200, ['data' => $stmt->fetchAll(), 'limit' => $limit]);
+                } else {
+                    // GET /api/notes/{id}
+                    $noteId = requireId($id);
+                    $stmt = $pdo->prepare(" 
+                        SELECT id, category, report_id, page, analyst_name, note_text, created_at, updated_at
+                        FROM analyst_notes
+                        WHERE id = :id
+                    ");
+                    $stmt->execute([':id' => $noteId]);
+                    $row = $stmt->fetch();
+                    if (!$row) respond(404, ['error' => "Note #$noteId not found"]);
+                    respond(200, $row);
+                }
+                break;
+
+            case 'POST':
+                // POST /api/notes  (upsert by category+report_id+page)
+                forbidId($id);
+                $b = readBody();
+                if (empty($b)) respond(400, ['error' => 'Request body is empty or invalid JSON']);
+
+                $category = trim((string)($b['category'] ?? 'Errors'));
+                $reportId = trim((string)($b['report_id'] ?? 'current'));
+                $page = trim((string)($b['page'] ?? 'errors'));
+                $name = trim((string)($b['analyst_name'] ?? 'Anonymous'));
+                $noteText = trim((string)($b['note_text'] ?? ''));
+
+                if ($noteText === '') respond(400, ['error' => 'Field "note_text" is required']);
+
+                if (mb_strlen($category) > 64) respond(400, ['error' => 'Field "category" is too long']);
+                if (mb_strlen($reportId) > 128) respond(400, ['error' => 'Field "report_id" is too long']);
+                if (mb_strlen($page) > 64) respond(400, ['error' => 'Field "page" is too long']);
+                if (mb_strlen($name) > 100) respond(400, ['error' => 'Field "analyst_name" is too long']);
+                if (mb_strlen($noteText) > 20000) respond(400, ['error' => 'Field "note_text" is too long']);
+
+                $stmt = $pdo->prepare(" 
+                    INSERT INTO analyst_notes (category, report_id, page, analyst_name, note_text)
+                    VALUES (:category, :report_id, :page, :analyst_name, :note_text)
+                    ON DUPLICATE KEY UPDATE
+                        analyst_name = VALUES(analyst_name),
+                        note_text = VALUES(note_text),
+                        updated_at = CURRENT_TIMESTAMP
+                ");
+                $stmt->execute([
+                    ':category' => $category,
+                    ':report_id' => $reportId,
+                    ':page' => $page,
+                    ':analyst_name' => $name,
+                    ':note_text' => $noteText,
+                ]);
+
+                // Return the effective row after upsert
+                $lookup = $pdo->prepare(" 
+                    SELECT id, category, report_id, page, analyst_name, note_text, created_at, updated_at
+                    FROM analyst_notes
+                    WHERE category = :category AND report_id = :report_id AND page = :page
+                    LIMIT 1
+                ");
+                $lookup->execute([
+                    ':category' => $category,
+                    ':report_id' => $reportId,
+                    ':page' => $page,
+                ]);
+                $row = $lookup->fetch();
+                respond(200, ['status' => 'upserted', 'data' => $row]);
+                break;
+
+            default:
+                respond(405, ['error' => 'Method Not Allowed']);
+        }
+        break;
+
+    // ── /api/comments ────────────────────────────────────────────────────────
+    case 'comments':
+        switch ($method) {
+
+            case 'GET':
+                if ($id === null) {
+                    // GET /api/comments?category=Errors&report_id=errors-123&page=errors&limit=100
+                    $limit = min(max((int)($_GET['limit'] ?? 100), 1), 500);
+                    $category = trim((string)($_GET['category'] ?? ''));
+                    $reportId = trim((string)($_GET['report_id'] ?? ''));
+                    $page = trim((string)($_GET['page'] ?? ''));
+
+                    $sql = "
+                        SELECT id, category, report_id, page, analyst_name, message, created_at
+                        FROM analyst_comments
+                    ";
+                    $where = [];
+                    $params = [];
+
+                    if ($category !== '') {
+                        $where[] = "category = :category";
+                        $params[':category'] = $category;
+                    }
+                    if ($reportId !== '') {
+                        $where[] = "report_id = :report_id";
+                        $params[':report_id'] = $reportId;
+                    }
+                    if ($page !== '') {
+                        $where[] = "page = :page";
+                        $params[':page'] = $page;
+                    }
+
+                    if (!empty($where)) {
+                        $sql .= " WHERE " . implode(' AND ', $where);
+                    }
+
+                    $sql .= " ORDER BY created_at DESC LIMIT :limit";
+                    $stmt = $pdo->prepare($sql);
+                    foreach ($params as $k => $v) {
+                        $stmt->bindValue($k, $v, PDO::PARAM_STR);
+                    }
+                    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                    $stmt->execute();
+
+                    respond(200, ['data' => $stmt->fetchAll(), 'limit' => $limit]);
+                } else {
+                    // GET /api/comments/{id}
+                    $commentId = requireId($id);
+                    $stmt = $pdo->prepare(" 
+                        SELECT id, category, report_id, page, analyst_name, message, created_at
+                        FROM analyst_comments
+                        WHERE id = :id
+                    ");
+                    $stmt->execute([':id' => $commentId]);
+                    $row = $stmt->fetch();
+                    if (!$row) respond(404, ['error' => "Comment #$commentId not found"]);
+                    respond(200, $row);
+                }
+                break;
+
+            case 'POST':
+                // POST /api/comments
+                forbidId($id);
+                $b = readBody();
+                if (empty($b)) respond(400, ['error' => 'Request body is empty or invalid JSON']);
+
+                $category = trim((string)($b['category'] ?? 'Errors'));
+                $reportId = trim((string)($b['report_id'] ?? 'current'));
+                $page = trim((string)($b['page'] ?? 'errors'));
+                $name = trim((string)($b['analyst_name'] ?? 'Anonymous'));
+                $message = trim((string)($b['message'] ?? ''));
+
+                if ($message === '') respond(400, ['error' => 'Field "message" is required']);
+
+                // Basic length guards to avoid oversized payloads
+                if (mb_strlen($category) > 64) respond(400, ['error' => 'Field "category" is too long']);
+                if (mb_strlen($reportId) > 128) respond(400, ['error' => 'Field "report_id" is too long']);
+                if (mb_strlen($page) > 64) respond(400, ['error' => 'Field "page" is too long']);
+                if (mb_strlen($name) > 100) respond(400, ['error' => 'Field "analyst_name" is too long']);
+                if (mb_strlen($message) > 5000) respond(400, ['error' => 'Field "message" is too long']);
+
+                $stmt = $pdo->prepare(" 
+                    INSERT INTO analyst_comments (category, report_id, page, analyst_name, message)
+                    VALUES (:category, :report_id, :page, :analyst_name, :message)
+                ");
+                $stmt->execute([
+                    ':category' => $category,
+                    ':report_id' => $reportId,
+                    ':page' => $page,
+                    ':analyst_name' => $name,
+                    ':message' => $message,
+                ]);
+
+                $newId = (int)$pdo->lastInsertId();
+                respond(201, ['status' => 'created', 'id' => $newId]);
+                break;
+
+            default:
+                respond(405, ['error' => 'Method Not Allowed']);
         }
         break;
 
