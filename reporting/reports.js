@@ -26,12 +26,8 @@ function formatDate(iso) {
 }
 
 function resolveOpenUrl(report) {
-  if (report.file_url) return report.file_url;
-  const page = (report.page || '').toLowerCase();
-  const pageFile = page === 'engagement' ? 'engagement.html'
-    : page === 'performance' ? 'performance.html'
-    : 'errors.html';
-  return `${pageFile}?reportId=${encodeURIComponent(report.report_id || '')}`;
+  if (report.status === 'ready' && report.file_url) return report.file_url;
+  return '';
 }
 
 async function renderTable() {
@@ -55,18 +51,21 @@ async function renderTable() {
 
   tbody.innerHTML = reports
     .map((r) => `
-      <tr data-url="${resolveOpenUrl(r)}">
+      <tr data-url="${resolveOpenUrl(r)}" data-openable="${resolveOpenUrl(r) ? '1' : '0'}">
         <td>${r.report_name ? r.report_name : 'Untitled report'}</td>
         <td><span class="report-pill">${r.category || 'Report'}</span></td>
         <td><span class="report-pill ${r.status === 'ready' ? 'status-ready' : 'status-pending'}">${r.status || 'pending'}</span></td>
         <td>${formatDate(r.created_at)}</td>
-        <td><a class="report-open" href="${resolveOpenUrl(r)}" target="_blank" rel="noopener">${r.file_url ? 'Open PDF' : 'Open Report'}</a></td>
+        <td>${resolveOpenUrl(r)
+          ? `<a class="report-open" href="${resolveOpenUrl(r)}" target="_blank" rel="noopener">Open PDF</a>`
+          : '<span class="report-open" aria-disabled="true">Pending Upload</span>'}</td>
       </tr>
     `)
     .join('');
 
   tbody.querySelectorAll('tr[data-url]').forEach((row) => {
     row.addEventListener('click', (event) => {
+      if (row.getAttribute('data-openable') !== '1') return;
       if (event.target.tagName.toLowerCase() === 'a') return;
       const url = row.getAttribute('data-url');
       if (url && url !== '#') window.location.href = url;
