@@ -966,77 +966,113 @@ function extractResourceData(rows) {
     const resourceEntries = [];
     const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
     const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
-    let cachedResources = 0;
     let summaryReqs = 0;
     let usedSummaryColumns = false;
 
-    const resourceRows = rows.filter(r => r.event_type === 'resource');
-
-    // First pass: use per-resource detail from raw_payload.resourceTimings.
-    for (const row of rows) {
-        try {
-            const payload = JSON.parse(row.raw_payload ?? 'null');
-            if (!payload) continue;
-            const timings = payload?.resourceTimings;
-            if (Array.isArray(timings) && timings.length > 0) {
-                resourceEntries.push(...timings.filter(isResourceTimingEntry));
-            }
-        } catch {}
+    if (rows.length > 0) {
+        console.log(
+            '[resources] first row keys:',
+            Object.keys(rows[0] ?? {}),
+            'resources_data sample:',
+            String(rows[0]?.resources_data ?? '').slice(0, 500)
+        );
     }
 
-    // Fallback pass: summary-only resource breakdown from resources_data.byType.
-    if (resourceEntries.length === 0) {
-        const MAP = {
-            script: 'JS',
-            link: 'CSS',
-            img: 'Image',
-            font: 'Font',
-            fetch: 'API',
-            xmlhttprequest: 'API',
-            other: 'Other',
-        };
+    const BY_TYPE_MAP = {
+        script: 'JS',
+        module: 'JS',
+        link: 'CSS',
+        stylesheet: 'CSS',
+        img: 'Image',
+        font: 'Font',
+        fetch: 'API',
+        xmlhttprequest: 'API',
+    };
 
-        for (const row of rows) {
-            let rd = null;
-            try {
-                rd = typeof row.resources_data === 'string'
-                    ? JSON.parse(row.resources_data)
-                    : row.resources_data;
-            } catch {}
-            if (!rd?.byType) continue;
-            usedSummaryColumns = true;
+    for (const row of rows) {
+        let rowCountTotal = 0;
+        let rowHasTypedSummary = false;
 
-            for (const [src, target] of Object.entries(MAP)) {
-                const entry = rd.byType[src];
-                if (!entry) continue;
-                const count = Number(entry.count ?? 0);
-                const bytes = Number(entry.totalSize ?? 0);
-                if (count > 0) typeMap[target] = (typeMap[target] || 0) + count;
-                if (bytes > 0) sizeMap[target] = (sizeMap[target] || 0) + bytes;
+        let rd = null;
+        try {
+            rd = typeof row.resources_data === 'string'
+                ? JSON.parse(row.resources_data)
+                : row.resources_data;
+        } catch {}
+
+        if (rd?.byType && typeof rd.byType === 'object') {
+            for (const [srcType, payload] of Object.entries(rd.byType)) {
+                if (!payload || typeof payload !== 'object') continue;
+                const key = String(srcType).toLowerCase();
+                const bucket = BY_TYPE_MAP[key] ?? 'Other';
+                const count = Number(payload.count ?? 0);
+                const bytes = Number(payload.totalSize ?? 0);
+                if (count > 0) {
+                    typeMap[bucket] += count;
+                    rowCountTotal += count;
+                    rowHasTypedSummary = true;
+                }
+                if (bytes > 0) {
+                    sizeMap[bucket] += bytes;
+                    rowHasTypedSummary = true;
+                }
             }
+        }
 
-            const total = Number(rd.totalResources ?? 0);
-            if (total > 0) summaryReqs += total;
+        if (!rowHasTypedSummary) {
+            const typedCols = [
+                ['resource_js_count', 'JS', 'count'],
+                ['resource_css_count', 'CSS', 'count'],
+                ['resource_img_count', 'Image', 'count'],
+                ['resource_js_bytes', 'JS', 'bytes'],
+                ['resource_css_bytes', 'CSS', 'bytes'],
+                ['resource_img_bytes', 'Image', 'bytes'],
+                ['resource_font_bytes', 'Font', 'bytes'],
+            ];
+
+            for (const [col, bucket, kind] of typedCols) {
+                const val = Number(row[col] ?? 0);
+                if (!(val > 0)) continue;
+                if (kind === 'count') {
+                    typeMap[bucket] += val;
+                    rowCountTotal += val;
+                } else {
+                    sizeMap[bucket] += val;
+                }
+                rowHasTypedSummary = true;
+            }
+        }
+
+        if (!rowHasTypedSummary) {
+            const totalCount = Number(row.resource_count ?? 0);
+            const totalBytes = Number(row.resource_total_bytes ?? 0);
+            if (totalCount > 0) {
+                typeMap.Other += totalCount;
+                rowCountTotal += totalCount;
+                rowHasTypedSummary = true;
+            }
+            if (totalBytes > 0) {
+                sizeMap.Other += totalBytes;
+                rowHasTypedSummary = true;
+            }
+        }
+
+        const totalFromBlob = Number(rd?.totalResources ?? 0);
+        if (totalFromBlob > 0) {
+            summaryReqs += totalFromBlob;
+            usedSummaryColumns = true;
+        } else if (rowCountTotal > 0) {
+            summaryReqs += rowCountTotal;
+            usedSummaryColumns = true;
+        } else if (rowHasTypedSummary) {
+            usedSummaryColumns = true;
         }
     }
 
-    for (const r of resourceEntries) {
-        const type = getResourceType(r);
-        typeMap[type] = (typeMap[type] || 0) + 1;
-        sizeMap[type] = (sizeMap[type] || 0) + (Number(r.transferSize) || 0);
-        if (Number(r.transferSize) === 0 && Number(r.decodedBodySize) > 0) cachedResources++;
-    }
-
-    const totalResources = resourceEntries.length > 0
-        ? resourceEntries.length
-        : summaryReqs;
-
-    const cacheRate = resourceEntries.length > 0
-        ? Math.round((cachedResources / resourceEntries.length) * 100)
-        : 0;
-
-    const hasResourceDetail = resourceEntries.length > 0;
-    const hasAnyResourceSignal = hasResourceDetail || usedSummaryColumns || resourceRows.length > 0;
+    const totalResources = summaryReqs;
+    const cacheRate = 0;
+    const hasResourceDetail = false;
+    const hasAnyResourceSignal = usedSummaryColumns;
 
     let emptyReason = null;
     if (!hasAnyResourceSignal) {
@@ -1084,15 +1120,21 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate, options
     }
 
     if (!hasResourceDetail) {
+        const hasAnySize = totalSize > 0;
         for (const type of Object.keys(sizeMap)) {
             const row = document.querySelector(`[data-resource-bar="${type}"]`);
             if (!row) continue;
             const fill = row.querySelector('.resource-fill');
             const pctEl  = row.querySelector('.resource-pct');
             const sizeEl = row.querySelector('.resource-size');
-            if (fill) fill.style.width = type === 'Other' ? '100%' : '0%';
-            if (pctEl) pctEl.textContent = type === 'Other' ? 'Summary only' : '—';
-            if (sizeEl) sizeEl.textContent = type === 'Other' ? formatBytes(sizeMap.Other ?? 0) : '—';
+            const size = Number(sizeMap[type] ?? 0);
+            const pct = hasAnySize ? Math.round((size / totalSize) * 100) : 0;
+            if (fill) {
+                fill.style.width = `${pct}%`;
+                fill.style.background = RESOURCE_COLORS[type] ?? '#717a96';
+            }
+            if (pctEl) pctEl.textContent = hasAnySize ? `${pct}%` : 'Summary only';
+            if (sizeEl) sizeEl.textContent = size > 0 ? formatBytes(size) : '—';
         }
         set('[data-total-size]', totalSize > 0 ? formatBytes(totalSize) : '—');
         set('[data-total-reqs]', totalReqs > 0 ? totalReqs.toLocaleString() : '—');
@@ -1120,113 +1162,100 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate, options
     set('[data-cache-rate]', cacheRate + '%');
 }
 
-function renderSlowestRequests(rows) {
+function renderSlowestPages(vitalsData) {
     const tbody = document.querySelector('[data-slow-requests]');
     if (!tbody) return;
 
-    const { resourceEntries, emptyReason } = extractResourceData(rows);
+    const byUrl = new Map();
+    for (const v of vitalsData) {
+        const lcp = Number(v.vital_lcp);
+        const url = String(v.url ?? '');
+        if (!url || !(lcp > 0)) continue;
+        if (!byUrl.has(url)) byUrl.set(url, { url, sum: 0, count: 0 });
+        const rec = byUrl.get(url);
+        rec.sum += lcp;
+        rec.count += 1;
+    }
 
-    const sorted = [...resourceEntries]
-        .sort((a, b) => b.duration - a.duration)
+    const sorted = [...byUrl.values()]
+        .map(rec => ({
+            url: rec.url,
+            avgLcp: rec.count > 0 ? rec.sum / rec.count : 0,
+            samples: rec.count,
+        }))
+        .sort((a, b) => b.avgLcp - a.avgLcp)
         .slice(0, 8);
 
     if (sorted.length === 0) {
-        const msg = emptyReason ?? 'No resource data available in collected data';
-        tbody.innerHTML = `<tr><td colspan="6" class="null-val" style="text-align:center">${escHtml(msg)}</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="5" class="null-val" style="text-align:center">No LCP data in selected range</td></tr>';
         return;
     }
 
-    tbody.innerHTML = sorted.map((r, i) => {
-        const rawName = String(r.name ?? '(unknown)');
-        const name    = rawName.split('/').pop().split('?')[0] || rawName;
-        const type    = getResourceType(r);
-        const dur     = Math.round(Number(r.duration) || 0);
-        const size    = r.transferSize > 0 ? formatBytes(r.transferSize) : '-';
-        const cached  = r.transferSize === 0 && r.decodedBodySize > 0;
-        const durCls  = dur > 1000 ? 'error-val' : dur > 500 ? 'warn-val' : '';
+    tbody.innerHTML = sorted.map((rec, i) => {
+        const path = pathname(rec.url);
+        const status = rec.avgLcp <= 2500 ? 'GOOD'
+            : rec.avgLcp <= 4000 ? 'NEEDS WORK'
+            : 'POOR';
+        const statusCls = rec.avgLcp <= 2500 ? 'good-val'
+            : rec.avgLcp <= 4000 ? 'warn-val'
+            : 'error-val';
         return `<tr>
             <td style="color:var(--text-muted)">${i + 1}</td>
-            <td data-col="page" title="${escHtml(rawName)}">${escHtml(name)}</td>
-            <td><span class="type-badge type-${type.toLowerCase()}">${escHtml(type)}</span></td>
-            <td class="${durCls}">${dur.toLocaleString()}ms</td>
-            <td>${escHtml(size)}</td>
-            <td>${cached ? '<span class="good-val">Cached ✅</span>' : '-'}</td>
+            <td data-col="page" title="${escHtml(rec.url)}">${escHtml(path)}</td>
+            <td>${escHtml(fmtMs(rec.avgLcp))}</td>
+            <td>${rec.samples.toLocaleString()}</td>
+            <td><span class="${statusCls}">${status}</span></td>
         </tr>`;
     }).join('');
 }
 
-function renderWaterfall(rows) {
+function renderLcpDistribution(vitalsData) {
     const axis      = document.querySelector('[data-waterfall-axis]');
     const container = document.querySelector('[data-waterfall]');
     if (!axis || !container) return;
 
-    const { resourceEntries, emptyReason } = extractResourceData(rows);
+    const buckets = [
+        { label: '< 1s', min: 0, max: 1000, color: '#10b981', count: 0 },
+        { label: '1-2.5s', min: 1000, max: 2500, color: '#3b82f6', count: 0 },
+        { label: '2.5-4s', min: 2500, max: 4000, color: '#f59e0b', count: 0 },
+        { label: '> 4s', min: 4000, max: Infinity, color: '#f87171', count: 0 },
+    ];
 
-    if (resourceEntries.length === 0) {
-        const msg = emptyReason ?? 'No resource data available in collected data';
-        container.innerHTML = `<li class="null-val" style="padding:1rem">${escHtml(msg)}</li>`;
+    for (const v of vitalsData) {
+        const lcp = Number(v.vital_lcp);
+        if (!(lcp > 0)) continue;
+        const bucket = buckets.find(b => lcp >= b.min && lcp < b.max);
+        if (bucket) bucket.count += 1;
+    }
+
+    const total = buckets.reduce((sum, b) => sum + b.count, 0);
+    const maxCount = Math.max(...buckets.map(b => b.count), 1);
+
+    if (total === 0) {
+        container.innerHTML = '<li class="null-val" style="padding:1rem">No LCP data in selected range</li>';
+        axis.textContent = 'No distribution available.';
         return;
     }
 
-    const navRow = rows.find(r => r.event_type === 'navigation');
-    let totalMs = 2000;
-    const derivedFromResources = Math.max(
-        ...resourceEntries.map(r => (Number(r.startTime) || 0) + (Number(r.duration) || 0)),
-        100
-    );
-
-    if (navRow) {
-        try {
-            const payload = JSON.parse(navRow.raw_payload ?? '{}');
-            const loadEvent = Number(payload?.timing?.loadEvent ?? 0);
-            const loadEventEnd = Number(payload?.loadEventEnd ?? 0);
-            totalMs = Math.max(loadEvent, loadEventEnd, derivedFromResources, 100);
-        } catch {
-            totalMs = derivedFromResources;
-        }
-    } else {
-        totalMs = derivedFromResources;
-    }
-
-    // Sort by startTime, take top 20
-    const sorted = [...resourceEntries]
-        .sort((a, b) => (Number(a.startTime) || 0) - (Number(b.startTime) || 0))
-        .slice(0, 20);
-
-    // Axis tick marks
-    const tickCount = 6;
-    axis.innerHTML = '';
-    for (let t = 0; t <= tickCount; t++) {
-        const ms  = (totalMs / tickCount) * t;
-        const pct = (ms / totalMs) * 100;
-        const tick = document.createElement('span');
-        tick.className = 'wf-tick';
-        tick.style.left = pct + '%';
-        tick.textContent = ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : Math.round(ms) + 'ms';
-        axis.appendChild(tick);
-    }
-
-    // Waterfall rows
     container.innerHTML = '';
-    sorted.forEach(r => {
-        const type   = getResourceType(r);
-        const rawName = String(r.name ?? '(unknown)');
-        const name   = rawName.split('/').pop().split('?')[0] || rawName.split('/').slice(-2).join('/');
-        const start  = Number(r.startTime) || 0;
-        const dur    = Number(r.duration) || 0;
-        const left   = (start / totalMs) * 100;
-        const width  = Math.max((dur / totalMs) * 100, 0.3);
+    buckets.forEach(b => {
+        const pct = total > 0 ? (b.count / total) * 100 : 0;
+        const width = (b.count / maxCount) * 100;
         const row    = document.createElement('li');
         row.className = 'wf-row';
         row.innerHTML = `
-            <span class="wf-name" title="${escHtml(rawName)}">${escHtml(name)}</span>
+            <span class="wf-name">${escHtml(b.label)}</span>
             <div class="wf-bar-track">
-                <div class="wf-bar" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${RESOURCE_COLORS[type] ?? '#717a96'}"></div>
+                <div class="wf-bar" style="left:0%;width:${width.toFixed(2)}%;background:${b.color}"></div>
             </div>
-            <span class="wf-dur">${Math.round(dur).toLocaleString()}ms</span>
+            <span class="wf-dur">${b.count.toLocaleString()} (${pct.toFixed(1)}%)</span>
         `;
         container.appendChild(row);
     });
+
+    const goodCount = buckets[0].count + buckets[1].count;
+    const goodPct = total > 0 ? (goodCount / total) * 100 : 0;
+    axis.textContent = `${goodPct.toFixed(1)}% of sessions had Good LCP (< 2.5s)`;
 }
 
 //  Tier 3: Device Segmentation 
@@ -1453,13 +1482,15 @@ function renderConversionBySpeed(rows, sessionData, vitalsData) {
     const tbody = document.querySelector('[data-conversion-table]');
     if (!tbody) return;
 
+    console.log('[conv] rows:', rows.length, 'sample lcps:', rows.slice(0, 5).map(r => r.vital_lcp));
+
     // Build session->LCP map from vitals endpoint (more complete than pageview rows)
-    const sessionLcp = new Map();
+    const lcpBySession = new Map();
     for (const v of vitalsData) {
         const lcp = Number(v.vital_lcp);
         if (v.session_id && lcp > 0) {
-            if (!sessionLcp.has(v.session_id) || lcp < sessionLcp.get(v.session_id)) {
-                sessionLcp.set(v.session_id, lcp);
+            if (!lcpBySession.has(v.session_id) || lcp < lcpBySession.get(v.session_id)) {
+                lcpBySession.set(v.session_id, lcp);
             }
         }
     }
@@ -1481,7 +1512,7 @@ function renderConversionBySpeed(rows, sessionData, vitalsData) {
 
     for (const row of rows) {
         if (row.event_type === 'error') continue;
-        const lcp = Number(row.vital_lcp) || sessionLcp.get(row.session_id) || 0;
+        const lcp = Number(row.vital_lcp) || lcpBySession.get(row.session_id) || 0;
         const sid = row.session_id;
         if (!sid) continue;
 
@@ -1983,8 +2014,8 @@ function refreshAllSections() {
         hasResourceDetail,
         hasAnyResourceSignal,
     });
-    renderSlowestRequests(filteredRows);
-    renderWaterfall(filteredRows);
+    renderSlowestPages(filteredVitals);
+    renderLcpDistribution(filteredVitals);
 
     // Populate selects
     populateTrendSelect(urlMap);

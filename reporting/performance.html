@@ -277,27 +277,26 @@
       </ul>
     </section>
 
-    <!-- ── Tier 2: Slowest Requests ─────────────────────────────────────── -->
+    <!-- ── Tier 2: Slowest Pages ────────────────────────────────────────── -->
     <section aria-labelledby="slow-heading" class="table-section">
       <header class="section-header">
-        <h2 id="slow-heading">Slowest Requests</h2>
-        <p class="section-sub">Top 8 slowest resources for the current page load</p>
+        <h2 id="slow-heading">Slowest Pages by LCP</h2>
+        <p class="section-sub">Top 8 pages with highest average Largest Contentful Paint</p>
       </header>
       <div class="table-scroll">
-        <table class="perf-table" aria-label="Top 8 slowest resource requests">
-          <caption class="sr-only">Slowest resource requests for this page load ranked by duration</caption>
+        <table class="perf-table" aria-label="Top 8 slowest pages by average LCP">
+          <caption class="sr-only">Slowest pages ranked by average Largest Contentful Paint</caption>
           <thead>
             <tr>
               <th scope="col">#</th>
-              <th scope="col">Resource</th>
-              <th scope="col">Type</th>
-              <th scope="col">Duration</th>
-              <th scope="col">Size</th>
-              <th scope="col">Cached</th>
+              <th scope="col">Page</th>
+              <th scope="col">Avg LCP</th>
+              <th scope="col">Samples</th>
+              <th scope="col">Status</th>
             </tr>
           </thead>
           <tbody data-slow-requests>
-            <tr><td colspan="6" class="null-val" style="text-align:center">Loading…</td></tr>
+            <tr><td colspan="5" class="null-val" style="text-align:center">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -382,117 +381,29 @@
       </div>
     </section>
 
-    <!-- ── Tier 2: Request Waterfall ────────────────────────────────────── -->
+    <!-- ── Tier 2: LCP Distribution ─────────────────────────────────────── -->
     <section aria-labelledby="waterfall-heading" class="waterfall-section">
       <div class="panel">
 
         <!-- Panel header -->
         <div class="wf-hdr-row">
-          <h2 id="waterfall-heading" class="wf-panel-title">Request Waterfall</h2>
-          <span class="panel-badge">Top 20 Resources</span>
+          <h2 id="waterfall-heading" class="wf-panel-title">LCP Distribution</h2>
+          <span class="panel-badge">Session Buckets</span>
         </div>
-
-        <!-- Resource-type legend -->
-        <ul class="waterfall-legend" role="list">
-          <li class="wf-swatch wf-js">JS</li>
-          <li class="wf-swatch wf-css">CSS</li>
-          <li class="wf-swatch wf-img">Image</li>
-          <li class="wf-swatch wf-font">Font</li>
-          <li class="wf-swatch wf-api">API</li>
-          <li class="wf-swatch wf-other">Other</li>
-        </ul>
 
         <figure class="waterfall-wrap">
-          <!-- Time axis — JS replaces inner spans with wf-tick elements at runtime -->
-          <div class="waterfall-axis" data-waterfall-axis>
-            <span>0ms</span>
-            <span>500ms</span>
-            <span>1000ms</span>
-            <span>1500ms</span>
-            <span>2000ms</span>
-          </div>
-
-          <!-- Waterfall rows — JS populates via [data-waterfall]; static rows shown as fallback -->
+          <!-- LCP bucket rows populated by JS -->
           <ol class="waterfall-rows" data-waterfall>
             <li class="wf-row">
-              <span class="wf-name">analytics.js</span>
+              <span class="wf-name">Loading...</span>
               <div class="wf-bar-track">
-                <div class="wf-bar wf-js" style="left:0%;width:28%">analytics.js</div>
+                <div class="wf-bar" style="left:0%;width:0%"></div>
               </div>
-            </li>
-            <li class="wf-row">
-              <span class="wf-name">analytics.css</span>
-              <div class="wf-bar-track">
-                <div class="wf-bar wf-css" style="left:0%;width:14%">analytics.css</div>
-              </div>
-            </li>
-            <li class="wf-row">
-              <span class="wf-name">Syne-Variable.woff2</span>
-              <div class="wf-bar-track">
-                <div class="wf-bar wf-font" style="left:8%;width:21%">Syne-Variable</div>
-              </div>
-            </li>
-            <li class="wf-row">
-              <span class="wf-name">hero-banner.webp</span>
-              <div class="wf-bar-track">
-                <div class="wf-bar wf-image" style="left:12%;width:40%">hero-banner.webp</div>
-              </div>
-            </li>
-            <li class="wf-row">
-              <span class="wf-name">/api/metrics</span>
-              <div class="wf-bar-track">
-                <div class="wf-bar wf-api" style="left:20%;width:48%">/api/metrics</div>
-              </div>
-            </li>
-            <li class="wf-row">
-              <span class="wf-name">performance.js</span>
-              <div class="wf-bar-track">
-                <div class="wf-bar wf-js" style="left:2%;width:35%">performance.js</div>
-              </div>
-            </li>
-            <li class="wf-row">
-              <span class="wf-name">favicon.ico</span>
-              <div class="wf-bar-track">
-                <div class="wf-bar wf-other" style="left:3%;width:8%">favicon.ico</div>
-              </div>
+              <span class="wf-dur">—</span>
             </li>
           </ol>
+          <p class="waterfall-axis" data-waterfall-axis>Loading distribution...</p>
         </figure>
-
-        <!-- Performance segment summary -->
-        <div class="wf-seg-wrap">
-          <table class="wf-seg-table" aria-label="Performance segment summary">
-            <caption class="sr-only">Page load performance segments — fast, medium, slow — with user share and conversion rates</caption>
-            <thead>
-              <tr>
-                <th scope="col">Segment</th>
-                <th scope="col">Users</th>
-                <th scope="col">Conv. Rate</th>
-                <th scope="col">vs Average</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="wf-seg-fast">
-                <td>Fast (&lt;1s)</td>
-                <td>34%</td>
-                <td>6.2%</td>
-                <td class="wf-vs-pos">+1.4%</td>
-              </tr>
-              <tr class="wf-seg-medium">
-                <td>Medium (1–3s)</td>
-                <td>51%</td>
-                <td>4.8%</td>
-                <td class="wf-vs-neutral">—</td>
-              </tr>
-              <tr class="wf-seg-slow">
-                <td>Slow (&gt;3s)</td>
-                <td>15%</td>
-                <td>2.1%</td>
-                <td class="wf-vs-neg">−2.7%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
 
       </div>
     </section>
