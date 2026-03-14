@@ -469,6 +469,36 @@
 .wf-bar.wf-api   { background: #b94ff7; }
 .wf-bar.wf-other { background: #717a96; }
 
+/* ── Tier 3: Geography segmentation ─────────────────────────────────── */
+.geo-section {
+    padding: 1.5rem var(--gap);
+    border-top: 1px solid var(--border);
+}
+
+.geo-wrap {
+    margin-top: .85rem;
+}
+
+.geo-summary {
+    padding: .6rem .8rem;
+    color: var(--text-muted);
+    font-size: .75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-alt);
+}
+
+.geo-row .wf-name {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.wf-bar.geo-americas { background: #3b82f6; }
+.wf-bar.geo-europe { background: #10b981; }
+.wf-bar.geo-asia { background: #f59e0b; }
+.wf-bar.geo-africa { background: #f87171; }
+.wf-bar.geo-australia { background: #b94ff7; }
+.wf-bar.geo-other { background: #717a96; }
+
 .wf-dur {
     padding-right: .5rem;
     text-align: right;
