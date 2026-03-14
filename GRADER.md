@@ -10,6 +10,10 @@ Login credentials:
 Please do these in **order**.
 
 ### Superadmin
+First, try an invalid login. You will see an error saying you have an invalid username or password. Do something nonsensical like:
+- Username: pie
+- Password: fish
+
 Login with credentials:
 - Username: dictator
 - Password: dictator135
@@ -35,6 +39,7 @@ Step-by-step:
 6. Once done, you can also edit and delete any comments you wish.
 7. Scroll back up to the top, and click "Save PDF report." **Save the PDF to your machine locally**.
 8. Click "Upload Saved PDF" and find the PDF on your local machine and click it.
+9. Click "Log Out" on the top right
 
 (See limitations at the end of the doc)
 
@@ -49,6 +54,8 @@ Step-by-step:
 3. Now, try editing the URL of the website to something nonsensical like "reporting.teamate.site/funky". This leads to a 404 error.
 4. Go to the "Reports" page.
 5. Click "Open PDF" on any report you want.
+6. Click "Log Out" on the top right
+7. [DONE] This is the end of our step-by-steps.
 
 (See limitations at the end of the doc)
 
