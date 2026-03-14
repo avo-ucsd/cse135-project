@@ -1,20 +1,20 @@
 class SiteHeader extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
-            <header role="banner">
-                <nav aria-label="Primary navigation">
-                <a href="index.html" class="wordmark">Team <strong>Ate</strong></a>
-                <ul role="list">
-                    <li><a href="index.html">Dashboard</a></li>
-                    <li><a href="engagement.html">User Engagement</a></li>
-                    <li><a href="performance.html">Performance</a></li>
-                    <li><a href="errors.html">Errors</a></li>
-                    <li><a href="reports.html">Reports</a></li>
-                    <li><a href="manage-users.php">Manage Users</a></li>
-                    <li><a href="raw.html">Raw Data</a></li>
+            <header role="banner" class="navbar navbar-expand-lg">
+                <nav aria-label="Primary navigation" class="container-xl">
+                <a href="index.html" class="wordmark navbar-brand">Team <strong>Ate</strong></a>
+                <ul role="list" class="navbar-nav flex-row flex-wrap gap-1 align-items-center">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="engagement.html">User Engagement</a></li>
+                    <li class="nav-item"><a class="nav-link" href="performance.html">Performance</a></li>
+                    <li class="nav-item"><a class="nav-link" href="errors.html">Errors</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reports.html">Reports</a></li>
+                    <li class="nav-item"><a class="nav-link" href="manage-users.php">Manage Users</a></li>
+                    <li class="nav-item"><a class="nav-link" href="raw.html">Raw Data</a></li>
                 </ul>
-                <form method="post" action="/logout.php" class="logout-form">
-                    <button type="submit" class="btn-logout">Log out</button>
+                <form method="post" action="/logout.php" class="logout-form ms-auto">
+                    <button type="submit" class="btn-logout btn btn-outline-light btn-sm">Log out</button>
                 </form>
                 </nav>
             </header>

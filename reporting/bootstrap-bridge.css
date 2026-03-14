@@ -1,0 +1,70 @@
+/* Bootstrap bridge for the reporting app's dark theme */
+:root {
+  --bs-font-sans-serif: var(--font-sans, Arial, sans-serif);
+  --bs-body-color: var(--text);
+  --bs-body-bg: var(--bg);
+  --bs-border-color: var(--border);
+  --bs-primary: var(--accent);
+  --bs-primary-rgb: 185, 79, 247;
+}
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text);
+  --bs-table-border-color: var(--border);
+  --bs-table-hover-bg: color-mix(in srgb, var(--surface-alt) 70%, transparent);
+  --bs-table-striped-bg: color-mix(in srgb, var(--surface-alt) 45%, transparent);
+}
+
+.table > :not(caption) > * > * {
+  border-bottom-color: var(--border);
+}
+
+.form-control,
+.form-select,
+.form-check-input {
+  background-color: var(--surface-alt);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  background-color: var(--surface-alt);
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--accent);
+  --bs-btn-border-color: var(--accent);
+  --bs-btn-hover-bg: #9c3de0;
+  --bs-btn-hover-border-color: #9c3de0;
+  --bs-btn-active-bg: #8f34d3;
+  --bs-btn-active-border-color: #8f34d3;
+}
+
+.btn-outline-light {
+  --bs-btn-color: var(--text-muted);
+  --bs-btn-border-color: var(--border);
+  --bs-btn-hover-color: var(--text);
+  --bs-btn-hover-bg: var(--surface-alt);
+  --bs-btn-hover-border-color: var(--text-muted);
+}
+
+.card {
+  --bs-card-bg: var(--surface);
+  --bs-card-border-color: var(--border);
+  --bs-card-color: var(--text);
+}
+
+.text-muted,
+.text-secondary {
+  color: var(--text-muted) !important;
+}
+
+.bg-body-tertiary {
+  background: var(--bg) !important;
+}

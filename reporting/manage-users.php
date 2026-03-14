@@ -66,7 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roles'])) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manage Users – Team Ate Analytics</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="analytics.css">
+  <link rel="stylesheet" href="bootstrap-bridge.css">
   <script src="/components/Header.js" defer></script>
   <style>
     .user-table td:first-child { color: var(--text); }
@@ -160,11 +162,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roles'])) {
     }
   </style>
 </head>
-<body>
+<body class="bg-body-tertiary">
 
   <site-header></site-header>
 
-  <main>
+  <main class="container-xl">
     <section class="page-header">
       <hgroup>
         <p class="eyebrow">Admin</p>
@@ -173,10 +175,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roles'])) {
     </section>
 
     <?php if ($success_msg): ?>
-    <div class="alert alert-success"><?= htmlspecialchars($success_msg) ?></div>
+    <div class="alert alert-success" role="alert"><?= htmlspecialchars($success_msg) ?></div>
     <?php endif; ?>
     <?php if ($error_msg): ?>
-    <div class="alert alert-error"><?= htmlspecialchars($error_msg) ?></div>
+    <div class="alert alert-danger" role="alert"><?= htmlspecialchars($error_msg) ?></div>
     <?php endif; ?>
 
     <section class="table-section">
@@ -186,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roles'])) {
 
       <form method="post" action="manage-users.php">
         <figure>
-          <table class="user-table">
+          <table class="user-table table table-hover align-middle mb-0">
             <caption class="sr-only">User list with roles</caption>
             <thead>
               <tr>
@@ -217,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roles'])) {
                   <?php if ($is_superadmin): ?>
                     <span class="locked-cell">— locked</span>
                   <?php else: ?>
-                    <select name="roles[<?= htmlspecialchars($username) ?>]" class="role-select">
+                    <select name="roles[<?= htmlspecialchars($username) ?>]" class="role-select form-select form-select-sm">
                       <?php foreach ($all_groups as $g):
                         if ($g === 'superadmin') continue;
                       ?>
@@ -236,14 +238,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['roles'])) {
         </figure>
 
         <div class="form-footer">
-          <button type="submit" class="btn-save">Save Changes</button>
+          <button type="submit" class="btn-save btn btn-primary">Save Changes</button>
         </div>
       </form>
 
     </section>
   </main>
 
-  <footer role="contentinfo">
+  <footer role="contentinfo" class="container-xl py-3">
     <p>Connected to <abbr title="DigitalOcean Droplet">DO</abbr> / Apache / MySQL; Made with love by Team Ate (and Claude AI)</p>
   </footer>
 

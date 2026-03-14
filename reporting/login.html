@@ -4,158 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login – Reporting</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <style>
-        :root {
-            --bg: #fdfdfd;
-            --text: #333;
-            --accent: #883eff;
-            --secondary: #64748b;
-        }
-
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            line-height: 1.6;
-            color: var(--text);
-            background-color: var(--bg);
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+        }
+
+        .login-shell {
             min-height: 100vh;
         }
 
-        header {
-            border-bottom: 2px solid #eee;
-            padding-bottom: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        h1 {
-            margin: 0;
-            color: var(--accent);
-        }
-
-        h2 {
-            color: var(--secondary);
-            border-left: 4px solid var(--accent);
-            padding-left: 10px;
-            margin-top: 0;
-        }
-
-        .login-section {
-            background: #f8fafc;
-            padding: 1.5rem;
-            border-radius: 8px;
-            max-width: 400px;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 0.3rem;
-            color: var(--text);
-            font-size: 0.95rem;
-        }
-
-        input[type="text"],
-        input[type="password"] {
+        .login-card {
+            max-width: 430px;
             width: 100%;
-            padding: 0.55rem 0.75rem;
             border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-family: inherit;
-            color: var(--text);
-            background: white;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            outline: none;
+            border-radius: 14px;
         }
 
-        input[type="text"]:focus,
-        input[type="password"]:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(136, 62, 255, 0.12);
-        }
-
-        button[type="submit"] {
-            width: 100%;
-            padding: 0.6rem 1rem;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-family: inherit;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 0.5rem;
-            transition: background 0.2s ease, transform 0.1s ease;
-        }
-
-        button[type="submit"]:hover {
-            background: #6e28e0;
-        }
-
-        button[type="submit"]:active {
-            transform: scale(0.98);
-        }
-
-        .error-msg {
-            background: #fff0f0;
-            border: 1px solid #fca5a5;
-            color: #b91c1c;
-            border-radius: 6px;
-            padding: 0.6rem 0.9rem;
-            margin-bottom: 1rem;
-            font-size: 0.92rem;
-        }
-
-        footer {
-            margin-top: 3rem;
-            font-size: 0.9rem;
-            color: var(--secondary);
-            text-align: center;
+        .login-brand {
+            letter-spacing: -0.02em;
         }
     </style>
 </head>
 
 <body>
-    <header>
-        <h1>Reporting</h1>
-    </header>
+    <main class="container d-flex align-items-center justify-content-center login-shell py-5">
+        <section class="card shadow-sm login-card">
+            <div class="card-body p-4 p-md-5">
+                <header class="mb-4 text-center">
+                    <h1 class="h3 fw-bold text-primary login-brand mb-1">Reporting</h1>
+                    <p class="text-secondary mb-0">Team Ate Analytics Portal</p>
+                </header>
 
-    <main>
-        <div class="login-section">
-            <h2>Sign In</h2>
+                <h2 class="h5 mb-3">Sign In</h2>
 
-            <div class="error-msg" id="error-msg" style="display:none;">
+            <div class="alert alert-danger" role="alert" id="error-msg" style="display:none;">
                 Invalid username or password. Please try again.
             </div>
 
-            <form method="POST" action="/j_security_check">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="httpd_username" autocomplete="username" required>
+            <form method="POST" action="/j_security_check" class="d-grid gap-3">
+                <div>
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" class="form-control" name="httpd_username" autocomplete="username" required>
                 </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="httpd_password" autocomplete="current-password" required>
+                <div>
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" class="form-control" name="httpd_password" autocomplete="current-password" required>
                 </div>
-                <button type="submit">Log In</button>
+                <button type="submit" class="btn btn-primary w-100">Log In</button>
             </form>
-        </div>
+            </div>
+        </section>
     </main>
-
-    <footer>
-        <p>Team Ate Moment</p>
-    </footer>
 
     <script>
         if (new URLSearchParams(window.location.search).has('failed')) {
