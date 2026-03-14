@@ -926,12 +926,12 @@ function initCoreWebVitals() {
 
 function getResourceType(entry) {
     const url  = String(entry?.name ?? '');
-    const init = entry.initiatorType;
+    const init = entry?.initiatorType ?? '';
     if (init === 'xmlhttprequest' || init === 'fetch') return 'API';
-    if (/\.js(\?|$)/.test(url))                         return 'JS';
-    if (/\.css(\?|$)/.test(url))                        return 'CSS';
-    if (/\.(woff2?|ttf|eot|otf)/.test(url))             return 'Font';
-    if (/\.(png|jpe?g|gif|webp|svg|avif|ico)/.test(url)) return 'Image';
+    if (init === 'script' || /\.js(\?|$)/.test(url))   return 'JS';
+    if (init === 'link'   || /\.css(\?|$)/.test(url))  return 'CSS';
+    if (init === 'font'   || /\.(woff2?|ttf|eot|otf)/.test(url)) return 'Font';
+    if (init === 'img'    || /\.(png|jpe?g|gif|webp|svg|avif|ico)/.test(url)) return 'Image';
     return 'Other';
 }
 
@@ -967,27 +967,26 @@ function extractResourceData(rows) {
     const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
     const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
     let cachedResources = 0;
+    let summaryReqs = 0;
+    let usedSummaryColumns = false;
 
     const resourceRows = rows.filter(r => r.event_type === 'resource');
-    for (const row of resourceRows) {
+
+    // First pass: use per-resource detail from raw_payload.resourceTimings.
+    for (const row of rows) {
         try {
-            const parsed = JSON.parse(row.raw_payload ?? 'null');
-            resourceEntries.push(...toResourceList(parsed));
+            const payload = JSON.parse(row.raw_payload ?? 'null');
+            if (!payload) continue;
+            const timings = payload?.resourceTimings;
+            if (Array.isArray(timings) && timings.length > 0) {
+                resourceEntries.push(...timings.filter(isResourceTimingEntry));
+            }
         } catch {}
     }
 
+    // Fallback pass: summary-only resource breakdown from resources_data.byType.
     if (resourceEntries.length === 0) {
-        for (const row of rows) {
-            try {
-                const payload = JSON.parse(row.raw_payload ?? '{}');
-                resourceEntries.push(...getResourceEntriesFromPayload(payload));
-            } catch {}
-        }
-    }
-
-    let usedSummaryColumns = false;
-    if (resourceEntries.length === 0) {
-        const SUMMARY_MAP = {
+        const MAP = {
             script: 'JS',
             link: 'CSS',
             img: 'Image',
@@ -997,54 +996,27 @@ function extractResourceData(rows) {
             other: 'Other',
         };
 
-        let summaryReqs = 0;
-        let summaryBytes = 0;
         for (const row of rows) {
-            let rowUsedByType = false;
-
+            let rd = null;
             try {
-                const summaryObj = typeof row.resources_data === 'string'
+                rd = typeof row.resources_data === 'string'
                     ? JSON.parse(row.resources_data)
                     : row.resources_data;
-                const byType = summaryObj?.byType;
-
-                if (byType && typeof byType === 'object') {
-                    for (const [srcType, targetType] of Object.entries(SUMMARY_MAP)) {
-                        const item = byType[srcType];
-                        if (!item || typeof item !== 'object') continue;
-                        const count = Number(item.count ?? 0);
-                        const bytes = Number(item.totalSize ?? 0);
-
-                        if (Number.isFinite(count) && count > 0) {
-                            typeMap[targetType] = (typeMap[targetType] || 0) + count;
-                            summaryReqs += count;
-                            rowUsedByType = true;
-                        }
-                        if (Number.isFinite(bytes) && bytes > 0) {
-                            sizeMap[targetType] = (sizeMap[targetType] || 0) + bytes;
-                            summaryBytes += bytes;
-                            rowUsedByType = true;
-                        }
-                    }
-                }
             } catch {}
-
-            if (!rowUsedByType) {
-                const count = Number(row.resource_count ?? 0);
-                const bytes = Number(row.resource_total_bytes ?? 0);
-                if (Number.isFinite(count) && count > 0) {
-                    typeMap.Other += count;
-                    summaryReqs += count;
-                }
-                if (Number.isFinite(bytes) && bytes > 0) {
-                    sizeMap.Other += bytes;
-                    summaryBytes += bytes;
-                }
-            }
-        }
-
-        if (summaryReqs > 0 || summaryBytes > 0) {
+            if (!rd?.byType) continue;
             usedSummaryColumns = true;
+
+            for (const [src, target] of Object.entries(MAP)) {
+                const entry = rd.byType[src];
+                if (!entry) continue;
+                const count = Number(entry.count ?? 0);
+                const bytes = Number(entry.totalSize ?? 0);
+                if (count > 0) typeMap[target] = (typeMap[target] || 0) + count;
+                if (bytes > 0) sizeMap[target] = (sizeMap[target] || 0) + bytes;
+            }
+
+            const total = Number(rd.totalResources ?? 0);
+            if (total > 0) summaryReqs += total;
         }
     }
 
@@ -1057,7 +1029,7 @@ function extractResourceData(rows) {
 
     const totalResources = resourceEntries.length > 0
         ? resourceEntries.length
-        : Object.values(typeMap).reduce((sum, val) => sum + val, 0);
+        : summaryReqs;
 
     const cacheRate = resourceEntries.length > 0
         ? Math.round((cachedResources / resourceEntries.length) * 100)
@@ -1205,8 +1177,10 @@ function renderWaterfall(rows) {
 
     if (navRow) {
         try {
-            const nav = JSON.parse(navRow.raw_payload ?? '{}');
-            totalMs = Math.max(Number(nav.loadEventEnd ?? 0), derivedFromResources, 100);
+            const payload = JSON.parse(navRow.raw_payload ?? '{}');
+            const loadEvent = Number(payload?.timing?.loadEvent ?? 0);
+            const loadEventEnd = Number(payload?.loadEventEnd ?? 0);
+            totalMs = Math.max(loadEvent, loadEventEnd, derivedFromResources, 100);
         } catch {
             totalMs = derivedFromResources;
         }
@@ -1475,9 +1449,20 @@ function renderDeviceSegment(technoData, vitalsData) {
 
 //  Tier 3: Performance vs Engagement 
 
-function renderConversionBySpeed(rows, sessionData) {
+function renderConversionBySpeed(rows, sessionData, vitalsData) {
     const tbody = document.querySelector('[data-conversion-table]');
     if (!tbody) return;
+
+    // Build session->LCP map from vitals endpoint (more complete than pageview rows)
+    const sessionLcp = new Map();
+    for (const v of vitalsData) {
+        const lcp = Number(v.vital_lcp);
+        if (v.session_id && lcp > 0) {
+            if (!sessionLcp.has(v.session_id) || lcp < sessionLcp.get(v.session_id)) {
+                sessionLcp.set(v.session_id, lcp);
+            }
+        }
+    }
 
     // Build bounce session set
     const bounceSessions = new Set(
@@ -1496,7 +1481,7 @@ function renderConversionBySpeed(rows, sessionData) {
 
     for (const row of rows) {
         if (row.event_type === 'error') continue;
-        const lcp = Number(row.vital_lcp);
+        const lcp = Number(row.vital_lcp) || sessionLcp.get(row.session_id) || 0;
         const sid = row.session_id;
         if (!sid) continue;
 
@@ -2012,7 +1997,7 @@ function refreshAllSections() {
     // Tier 3
     renderDeviceSegment(filteredTechno, filteredVitals);
     renderGeographySegment(filteredTechno);
-    renderConversionBySpeed(filteredRows, filteredSessionData);
+    renderConversionBySpeed(filteredRows, filteredSessionData, filteredVitals);
 
     updateFilterLabel();
 }
