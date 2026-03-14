@@ -10,6 +10,7 @@ class SiteHeader extends HTMLElement {
                     <li><a href="performance.html">Performance</a></li>
                     <li><a href="errors.html">Errors</a></li>
                     <li><a href="reports.html">Reports</a></li>
+                    <li><a href="manage-users.php">Manage Users</a></li>
                     <li><a href="raw.html">Raw Data</a></li>
                 </ul>
                 <form method="post" action="/logout.php" class="logout-form">
