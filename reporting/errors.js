@@ -507,7 +507,7 @@ function renderBrowserChart(errors) {
     // Legend
     const legendX = 10;
     const legendAreaHeight = sorted.length * 18 + 5;
-    let legendY = Math.max(M.top + 10, canvas.height - legendAreaHeight);
+    let legendY = Math.max(50, canvas.height - legendAreaHeight);
     sorted.forEach(([name, val], i) => {
       const pct = ((val / total) * 100).toFixed(1);
       ctx.fillStyle = COLORS[i % COLORS.length];
