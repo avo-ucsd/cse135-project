@@ -1,12 +1,135 @@
-/* --- Chart grid ------------------------------------------ */
+/* --- Engagement layout ----------------------------------- */
 .chart-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--gap);
 }
 
-@media (max-width: 700px) {
+.split-wrap {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.segmented-control {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.segmented-control button {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+}
+
+.segmented-control button + button {
+  border-left: 1px solid var(--border);
+}
+
+.segmented-control button.active {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.inline-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.inline-select select,
+.filter-grid select,
+.filter-grid button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.42rem 0.6rem;
+}
+
+.button-link {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.filter-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.filter-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.filter-grid button {
+  cursor: pointer;
+}
+
+.filter-grid button.secondary {
+  background: transparent;
+}
+
+.kpi-strip.mini .kpi-card {
+  padding: 1rem;
+}
+
+.kpi-strip.mini .kpi-value {
+  font-size: 1.4rem;
+}
+
+.fineprint {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+}
+
+.table-section tbody td:first-child {
+  color: var(--text);
+}
+
+@media (max-width: 980px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-actions {
+    grid-column: 1 / -1;
+    align-items: center;
+  }
+}
+
+@media (max-width: 760px) {
   .chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-grid {
     grid-template-columns: 1fr;
   }
 }
