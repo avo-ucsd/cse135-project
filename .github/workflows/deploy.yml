@@ -48,7 +48,10 @@ jobs:
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
-        run: rsync -avz --delete reporting/ $SERVER_USER@$SERVER_IP:/var/www/reporting.teamate.site/public_html
+        run: |
+          rsync -avz --delete \
+            --exclude='uploads/reports/***' \
+            reporting/ $SERVER_USER@$SERVER_IP:/var/www/reporting.teamate.site/public_html
       
       - name: Deploy www
         if: steps.changes.outputs.www == 'true'
