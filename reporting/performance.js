@@ -964,16 +964,28 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate) {
     set('[data-cache-rate]', cacheRate + '%');
 }
 
-function renderSlowestRequests(resources) {
+function renderSlowestRequests(rows) {
     const tbody = document.querySelector('[data-slow-requests]');
     if (!tbody) return;
+
+    const resources = rows
+        .filter(r => r.event_type === 'resource')
+        .map(r => {
+            try {
+                return JSON.parse(r.raw_payload);
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean)
+        .flat();
 
     const sorted = [...resources]
         .sort((a, b) => b.duration - a.duration)
         .slice(0, 8);
 
     if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="null-val" style="text-align:center">No resource data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="null-val" style="text-align:center">No resource data available in collected data</td></tr>';
         return;
     }
 
@@ -995,17 +1007,30 @@ function renderSlowestRequests(resources) {
     }).join('');
 }
 
-function renderWaterfall(resources) {
+function renderWaterfall(rows) {
     const axis      = document.querySelector('[data-waterfall-axis]');
     const container = document.querySelector('[data-waterfall]');
     if (!axis || !container) return;
 
+    const resources = rows
+        .filter(r => r.event_type === 'resource')
+        .map(r => {
+            try {
+                return JSON.parse(r.raw_payload);
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean)
+        .flat();
+
     if (resources.length === 0) {
-        container.innerHTML = '<li class="null-val" style="padding:1rem">No resource data available</li>';
+        container.innerHTML = '<li class="null-val" style="padding:1rem">No resource data available in collected data</li>';
         return;
     }
 
-    const nav     = performance.getEntriesByType('navigation')[0];
+    const navEntry = rows.find(r => r.event_type === 'navigation');
+    const nav = navEntry ? JSON.parse(navEntry.raw_payload) : null;
     const pageEnd = nav
         ? Math.max(nav.loadEventEnd, ...resources.map(r => r.responseEnd))
         : Math.max(...resources.map(r => r.responseEnd));
@@ -1039,13 +1064,11 @@ function renderWaterfall(resources) {
         const row    = document.createElement('li');
         row.className = 'wf-row';
         row.innerHTML = `
-            <span class="wf-name" title="${escHtml(r.name)}">${escHtml(name.length > 35 ? name.slice(0, 33) + '...' : name)}</span>
+            <span class="wf-name" title="${escHtml(r.name)}">${escHtml(name)}</span>
             <div class="wf-bar-track">
-                <div class="wf-bar wf-${type.toLowerCase()}"
-                     style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%"
-                     title="${escHtml(r.name)}&#10;Start: ${Math.round(r.startTime)}ms&#10;Duration: ${Math.round(r.duration)}ms&#10;Type: ${type}"></div>
+                <div class="wf-bar" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${RESOURCE_COLORS[type] ?? '#717a96'}"></div>
             </div>
-            <span class="wf-dur">${Math.round(r.duration)}ms</span>
+            <span class="wf-dur">${Math.round(r.duration).toLocaleString()}ms</span>
         `;
         container.appendChild(row);
     });
@@ -1056,7 +1079,13 @@ function processResources() {
         setTimeout(() => {
             try {
                 const resources = performance.getEntriesByType('resource');
-                if (!resources.length) return;
+
+                if (!resources.length) {
+                    renderResourceBreakdown({}, {}, 0, 0);
+                    renderSlowestRequests([]);
+                    renderWaterfall([]);
+                    return;
+                }
 
                 const typeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
                 const sizeMap = { JS: 0, CSS: 0, Image: 0, Font: 0, API: 0, Other: 0 };
@@ -1065,16 +1094,24 @@ function processResources() {
                 for (const r of resources) {
                     const type = getResourceType(r);
                     typeMap[type] = (typeMap[type] || 0) + 1;
-                    sizeMap[type] = (sizeMap[type] || 0) + (r.transferSize || 0);
-                    if (r.transferSize === 0 && r.decodedBodySize > 0) cached++;
+                    sizeMap[type] = (sizeMap[type] || 0) + (Number(r.transferSize) || 0);
+                    if (Number(r.transferSize) === 0 && Number(r.decodedBodySize) > 0) cached++;
                 }
 
-                const cacheRate = resources.length > 0
-                    ? Math.round((cached / resources.length) * 100) : 0;
+                const cacheRate = Math.round((cached / resources.length) * 100);
+
+                const rows = [];
+                const nav = performance.getEntriesByType('navigation')[0];
+                if (nav) {
+                    rows.push({ event_type: 'navigation', raw_payload: JSON.stringify(nav) });
+                }
+                for (const r of resources) {
+                    rows.push({ event_type: 'resource', raw_payload: JSON.stringify([r]) });
+                }
 
                 renderResourceBreakdown(typeMap, sizeMap, resources.length, cacheRate);
-                renderSlowestRequests(resources);
-                renderWaterfall(resources);
+                renderSlowestRequests(rows);
+                renderWaterfall(rows);
             } catch (e) {
                 console.warn('[performance] Resource Timing:', e);
             }
