@@ -43,31 +43,143 @@
       </article>
     </section>
 
+    <section aria-labelledby="time-series-heading" class="chart-section">
+      <header class="section-header split-wrap">
+        <h2 id="time-series-heading">Engagement Time Series</h2>
+        <div class="segmented-control" role="group" aria-label="Time window">
+          <button type="button" data-window="7">7 days</button>
+          <button type="button" data-window="30" class="active">30 days</button>
+          <button type="button" data-window="90">90 days</button>
+        </div>
+      </header>
+      <figure>
+        <canvas id="trendChart" width="1000" height="300"
+          aria-label="Time series of average session duration, pages per session, and bounce rate" role="img"></canvas>
+        <figcaption>Avg session duration (minutes), pages/session, and bounce rate over selected window</figcaption>
+        <div class="tooltip" id="trendTooltip"></div>
+      </figure>
+    </section>
+
     <div class="chart-grid">
       <section aria-labelledby="duration-heading" class="chart-section">
         <h2 id="duration-heading">Session Duration Distribution</h2>
         <figure>
           <canvas id="durationChart" width="500" height="280"
-            aria-label="Bar chart of session duration buckets" role="img"></canvas>
-          <figcaption>Sessions by duration bucket</figcaption>
+            aria-label="Histogram of session duration buckets" role="img"></canvas>
+          <figcaption>Sessions by duration bucket (uniform 1-minute bins + overflow)</figcaption>
           <div class="tooltip" id="durationTooltip"></div>
         </figure>
       </section>
 
       <section aria-labelledby="depth-heading" class="chart-section">
-        <h2 id="depth-heading">Session Depth</h2>
+        <header class="section-header split-wrap">
+          <h2 id="depth-heading">Pages Per Session by Cohort</h2>
+          <label class="inline-select">
+            Compare
+            <select id="cohortCompare">
+              <option value="visitor">New vs Returning</option>
+              <option value="channel">Channel</option>
+            </select>
+          </label>
+        </header>
         <figure>
           <canvas id="depthChart" width="500" height="280"
-            aria-label="Bar chart of pages viewed per session" role="img"></canvas>
-          <figcaption>Sessions by pages visited</figcaption>
+            aria-label="Bar chart comparing pages per session by cohort" role="img"></canvas>
+          <figcaption>Average pages per session by selected cohort type</figcaption>
           <div class="tooltip" id="depthTooltip"></div>
         </figure>
       </section>
     </div>
 
+    <section aria-labelledby="aggregation-heading" class="table-section">
+      <header class="section-header split-wrap">
+        <h2 id="aggregation-heading">Analyst Aggregation</h2>
+        <button type="button" class="link-more button-link" id="printReport">Print / Save PDF</button>
+      </header>
+      <form class="filter-grid" id="aggregationFilters" aria-label="Engagement aggregation filters">
+        <label>
+          Browser
+          <select name="browser" id="filterBrowser"><option value="all">All</option></select>
+        </label>
+        <label>
+          Device
+          <select name="device" id="filterDevice"><option value="all">All</option></select>
+        </label>
+        <label>
+          Channel
+          <select name="channel" id="filterChannel"><option value="all">All</option></select>
+        </label>
+        <label>
+          Country (estimated)
+          <select name="country" id="filterCountry"><option value="all">All</option></select>
+        </label>
+        <div class="filter-actions">
+          <button type="submit">Apply</button>
+          <button type="button" id="clearFilters" class="secondary">Clear</button>
+        </div>
+      </form>
+      <div class="kpi-strip mini" id="aggregationCards">
+        <article class="kpi-card"><h2>Sessions</h2><p class="kpi-value" data-agg="sessions">0</p></article>
+        <article class="kpi-card"><h2>Avg Session</h2><p class="kpi-value" data-agg="duration">0m 0s</p></article>
+        <article class="kpi-card"><h2>Pages / Session</h2><p class="kpi-value" data-agg="pages">0.0</p></article>
+        <article class="kpi-card"><h2>Total Errors</h2><p class="kpi-value" data-agg="errors">0</p></article>
+      </div>
+      <p class="fineprint" id="aggregationSummary">Showing all sessions.</p>
+    </section>
+
+    <section aria-labelledby="segments-table-heading" class="table-section">
+      <header class="section-header">
+        <h2 id="segments-table-heading">Top Segments by Engagement</h2>
+      </header>
+      <figure>
+        <table>
+          <caption class="sr-only">Top engagement segments by device, country estimate, and channel</caption>
+          <thead>
+            <tr>
+              <th scope="col">Segment</th>
+              <th scope="col">Sessions</th>
+              <th scope="col">Avg Session</th>
+              <th scope="col">Pages / Session</th>
+              <th scope="col">Bounce</th>
+            </tr>
+          </thead>
+          <tbody id="segmentsBody"></tbody>
+        </table>
+      </figure>
+      <p class="fineprint">Country and channel are inferred from locale/referrer and may be approximate.</p>
+    </section>
+
+    <section aria-labelledby="cohort-table-heading" class="table-section">
+      <header class="section-header split-wrap">
+        <h2 id="cohort-table-heading">User Cohort Retention</h2>
+        <label class="inline-select">
+          Cohort period
+          <select id="cohortGranularity">
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+          </select>
+        </label>
+      </header>
+      <figure>
+        <table>
+          <caption class="sr-only">User cohort retention percentages</caption>
+          <thead>
+            <tr>
+              <th scope="col">Cohort</th>
+              <th scope="col">Users</th>
+              <th scope="col">7 Day</th>
+              <th scope="col">30 Day</th>
+              <th scope="col">90 Day</th>
+            </tr>
+          </thead>
+          <tbody id="cohortBody"></tbody>
+        </table>
+      </figure>
+    </section>
+
     <section aria-labelledby="sessions-table-heading" class="table-section">
       <header class="section-header">
-        <h2 id="sessions-table-heading">Recent Sessions</h2>
+        <h2 id="sessions-table-heading">Recent Sessions (Compact)</h2>
       </header>
       <figure>
         <table>
@@ -78,14 +190,14 @@
               <th scope="col">Start</th>
               <th scope="col">Duration</th>
               <th scope="col">Pages</th>
-              <th scope="col">Device</th>
-              <th scope="col">Language</th>
+              <th scope="col">Segment</th>
               <th scope="col">Errors</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody id="sessionsBody"></tbody>
         </table>
       </figure>
+      <p class="fineprint">Trimmed to reduce information overload while keeping triage context.</p>
     </section>
   </main>
 
