@@ -958,8 +958,19 @@ function isResourceTimingEntry(item) {
 
 function getResourceEntriesFromPayload(payload) {
     if (!payload || typeof payload !== 'object') return [];
-    const embedded = payload?.resources ?? payload?.resourceTimings ?? [];
-    return toResourceList(embedded);
+
+    const candidates = [
+        payload?.resourceTimings,
+        payload?.resources,
+        payload?.resourceEntries,
+    ];
+
+    for (const candidate of candidates) {
+        const entries = toResourceList(candidate);
+        if (entries.length > 0) return entries;
+    }
+
+    return [];
 }
 
 function extractResourceData(rows) {
@@ -1958,29 +1969,6 @@ function refreshAllSections() {
     const filteredVitals      = getFilteredVitals(cachedVitals);
     const vitalsInRange        = getTimeFilteredVitals(cachedVitals);
     const filteredTechno      = getFilteredTechno(cachedTechno);
-
-    console.log('[diag] filteredRows total:', filteredRows.length);
-    console.log('[diag] event_type values:', [...new Set(filteredRows.map(r => r.event_type))]);
-
-    const resourceRows = filteredRows.filter(r => r.event_type === 'resource');
-    console.log('[diag] resource rows:', resourceRows.length);
-
-    if (resourceRows.length > 0) {
-        console.log('[diag] first resource row keys:', Object.keys(resourceRows[0]));
-        console.log(
-            '[diag] first resource raw_payload (first 300 chars):',
-            String(resourceRows[0].raw_payload ?? '').slice(0, 300)
-        );
-    } else {
-        const sample = filteredRows.slice(0, 3);
-        sample.forEach((r, i) => {
-            console.log(`[diag] row[${i}] event_type=${r.event_type} keys:`, Object.keys(r));
-            console.log(
-                `[diag] row[${i}] raw_payload (first 300):`,
-                String(r.raw_payload ?? '').slice(0, 300)
-            );
-        });
-    }
 
     const { urlMap, bounceSessions } =
         buildAggregates(filteredRows, filteredSessionData);
