@@ -120,6 +120,13 @@
   flex-wrap: wrap;
 }
 
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 /* --- Analyst notes + comments ---------------------------- */
 .analyst-notes,
 .comments-section {
@@ -275,5 +282,9 @@
 
   .filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .report-actions {
+    width: 100%;
   }
 }

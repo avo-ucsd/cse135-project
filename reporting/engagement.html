@@ -18,6 +18,14 @@
         <p class="eyebrow">Analytics</p>
         <h1 id="page-title">User Engagement</h1>
       </hgroup>
+      <div class="page-actions">
+        <div class="report-actions" role="group" aria-label="Report actions">
+          <button type="button" class="button-link" id="saveReportBtn">Save PDF Report</button>
+          <button type="button" class="button-link" id="uploadReportPdfBtn">Upload Saved PDF</button>
+          <input id="reportPdfInput" type="file" accept="application/pdf" hidden>
+          <a class="link-more button-link" href="reports.html">View Reports</a>
+        </div>
+      </div>
     </section>
 
     <section aria-label="Engagement metrics" class="kpi-strip">
@@ -94,12 +102,6 @@
     <section aria-labelledby="aggregation-heading" class="table-section">
       <header class="section-header split-wrap">
         <h2 id="aggregation-heading">Analyst Aggregation</h2>
-        <div class="report-actions" role="group" aria-label="Report actions">
-          <button type="button" class="button-link" id="saveReportBtn">Save PDF Report</button>
-          <button type="button" class="button-link" id="uploadReportPdfBtn">Upload Saved PDF</button>
-          <input id="reportPdfInput" type="file" accept="application/pdf" hidden>
-          <a class="link-more button-link" href="reports.html">View Reports</a>
-        </div>
       </header>
       <form class="filter-grid" id="aggregationFilters" aria-label="Engagement aggregation filters">
         <label>
