@@ -942,9 +942,18 @@ const RESOURCE_COLORS = {
 
 function toResourceList(parsed) {
     if (!parsed) return [];
-    if (Array.isArray(parsed)) return parsed;
-    if (typeof parsed === 'object') return [parsed];
+    if (Array.isArray(parsed)) return parsed.filter(isResourceTimingEntry);
+    if (isResourceTimingEntry(parsed)) return [parsed];
     return [];
+}
+
+function isResourceTimingEntry(item) {
+    if (!item || typeof item !== 'object') return false;
+    const hasName = typeof item.name === 'string' && item.name.trim() !== '';
+    const hasDuration = Number.isFinite(Number(item.duration));
+    const hasStart = Number.isFinite(Number(item.startTime));
+    const hasResponseEnd = Number.isFinite(Number(item.responseEnd));
+    return hasName || hasDuration || hasStart || hasResponseEnd;
 }
 
 function getResourceEntriesFromPayload(payload) {
