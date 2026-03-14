@@ -1148,9 +1148,11 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate, options
     set('[data-cache-rate]', cacheRate + '%');
 }
 
-function renderSlowestRequests(resourceEntries, emptyReason = null) {
+function renderSlowestRequests(rows) {
     const tbody = document.querySelector('[data-slow-requests]');
     if (!tbody) return;
+
+    const { resourceEntries, emptyReason } = extractResourceData(rows);
 
     const sorted = [...resourceEntries]
         .sort((a, b) => b.duration - a.duration)
@@ -1181,10 +1183,12 @@ function renderSlowestRequests(resourceEntries, emptyReason = null) {
     }).join('');
 }
 
-function renderWaterfall(resourceEntries, rows, emptyReason = null) {
+function renderWaterfall(rows) {
     const axis      = document.querySelector('[data-waterfall-axis]');
     const container = document.querySelector('[data-waterfall]');
     if (!axis || !container) return;
+
+    const { resourceEntries, emptyReason } = extractResourceData(rows);
 
     if (resourceEntries.length === 0) {
         const msg = emptyReason ?? 'No resource data available in collected data';
@@ -1994,8 +1998,8 @@ function refreshAllSections() {
         hasResourceDetail,
         hasAnyResourceSignal,
     });
-    renderSlowestRequests(resourceEntries, emptyReason);
-    renderWaterfall(resourceEntries, filteredRows, emptyReason);
+    renderSlowestRequests(filteredRows);
+    renderWaterfall(filteredRows);
 
     // Populate selects
     populateTrendSelect(urlMap);
