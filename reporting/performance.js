@@ -1112,26 +1112,15 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate, options
     }
 
     if (!hasResourceDetail) {
-        const totalCount = Object.values(typeMap).reduce((a, b) => a + b, 0);
         for (const type of Object.keys(sizeMap)) {
             const row = document.querySelector(`[data-resource-bar="${type}"]`);
             if (!row) continue;
             const fill = row.querySelector('.resource-fill');
             const pctEl  = row.querySelector('.resource-pct');
             const sizeEl = row.querySelector('.resource-size');
-
-            const bytes = Number(sizeMap[type] ?? 0);
-            const count = Number(typeMap[type] ?? 0);
-            const pct = totalSize > 0
-                ? Math.round((bytes / totalSize) * 100)
-                : (totalCount > 0 ? Math.round((count / totalCount) * 100) : 0);
-
-            if (fill) {
-                fill.style.width = pct + '%';
-                fill.style.background = RESOURCE_COLORS[type] ?? '#717a96';
-            }
-            if (pctEl) pctEl.textContent = pct + '%';
-            if (sizeEl) sizeEl.textContent = bytes > 0 ? formatBytes(bytes) : '—';
+            if (fill) fill.style.width = type === 'Other' ? '100%' : '0%';
+            if (pctEl) pctEl.textContent = type === 'Other' ? 'Summary only' : '—';
+            if (sizeEl) sizeEl.textContent = type === 'Other' ? formatBytes(sizeMap.Other ?? 0) : '—';
         }
         set('[data-total-size]', totalSize > 0 ? formatBytes(totalSize) : '—');
         set('[data-total-reqs]', totalReqs > 0 ? totalReqs.toLocaleString() : '—');
@@ -1159,9 +1148,11 @@ function renderResourceBreakdown(typeMap, sizeMap, totalReqs, cacheRate, options
     set('[data-cache-rate]', cacheRate + '%');
 }
 
-function renderSlowestRequests(resourceEntries, emptyReason = null) {
+function renderSlowestRequests(rows) {
     const tbody = document.querySelector('[data-slow-requests]');
     if (!tbody) return;
+
+    const { resourceEntries, emptyReason } = extractResourceData(rows);
 
     const sorted = [...resourceEntries]
         .sort((a, b) => b.duration - a.duration)
@@ -1192,10 +1183,12 @@ function renderSlowestRequests(resourceEntries, emptyReason = null) {
     }).join('');
 }
 
-function renderWaterfall(resourceEntries, rows, emptyReason = null) {
+function renderWaterfall(rows) {
     const axis      = document.querySelector('[data-waterfall-axis]');
     const container = document.querySelector('[data-waterfall]');
     if (!axis || !container) return;
+
+    const { resourceEntries, emptyReason } = extractResourceData(rows);
 
     if (resourceEntries.length === 0) {
         const msg = emptyReason ?? 'No resource data available in collected data';
@@ -2005,8 +1998,8 @@ function refreshAllSections() {
         hasResourceDetail,
         hasAnyResourceSignal,
     });
-    renderSlowestRequests(resourceEntries, emptyReason);
-    renderWaterfall(resourceEntries, filteredRows, emptyReason);
+    renderSlowestRequests(filteredRows);
+    renderWaterfall(filteredRows);
 
     // Populate selects
     populateTrendSelect(urlMap);
