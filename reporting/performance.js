@@ -22,9 +22,7 @@ let cachedTechno      = [];
 let cachedErrors      = [];
 
 //  AbortControllers for chart mouse listeners 
-let topPagesBarAbort = null;
 let trendAbort       = null;
-let entryExitAbort   = null;
 let sparklineAbortMap = new Map();
 
 //  API helper 
@@ -186,8 +184,6 @@ function buildAggregates(rows, sessionData) {
                 totalDuration:  0,
                 durationCount:  0,
                 errors:         0,
-                entrances:      0,
-                exits:          0,
                 dailyDurations: make30DayBuckets(),
             });
         }
@@ -210,31 +206,13 @@ function buildAggregates(rows, sessionData) {
         }
     }
 
-    const sessionMap = new Map();
-    for (const row of rows) {
-        if (!row.session_id || row.event_type === 'error') continue;
-        if (!sessionMap.has(row.session_id)) sessionMap.set(row.session_id, []);
-        sessionMap.get(row.session_id).push(row);
-    }
-
-    for (const pages of sessionMap.values()) {
-        pages.sort((a, b) =>
-            new Date(a.page_entered_at ?? a.received_at) -
-            new Date(b.page_entered_at ?? b.received_at)
-        );
-        const firstUrl = pages[0].url;
-        const lastUrl  = pages.at(-1).url;
-        if (urlMap.has(firstUrl)) urlMap.get(firstUrl).entrances++;
-        if (urlMap.has(lastUrl))  urlMap.get(lastUrl).exits++;
-    }
-
     const bounceSessions = new Set(
         sessionData
             .filter(s => Number(s.pageview_count) === 1)
             .map(s => s.session_id)
     );
 
-    return { urlMap, bounceSessions, sessionMap };
+    return { urlMap, bounceSessions };
 }
 
 //  Tier 1: Core Web Vitals 
@@ -1160,152 +1138,6 @@ function renderUnderperf(urlMap, bounceSessions, uniqueErrorMap) {
     if (wrap) wrap.hidden = false;
 }
 
-//  Chart: Top Pages Bar (horizontal) 
-
-function drawTopPagesBar(urlMap, metric, topN) {
-    const canvas = document.getElementById('topPagesChart');
-    if (!canvas) return;
-
-    const getValue = e => metric === 'uniques' ? e.sessions.size : e.views;
-    const top = [...urlMap.values()]
-        .sort((a, b) => getValue(b) - getValue(a))
-        .slice(0, topN);
-
-    const ctx    = canvas.getContext('2d');
-    const margin = { top: 40, right: 80, bottom: 40, left: 220 };
-    const w      = canvas.width  - margin.left - margin.right;
-    const h      = canvas.height - margin.top  - margin.bottom;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (top.length === 0) {
-        ctx.fillStyle = '#717a96';
-        ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
-        return;
-    }
-
-    if (topPagesBarAbort) topPagesBarAbort.abort();
-    topPagesBarAbort = new AbortController();
-
-    const maxVal  = Math.max(...top.map(getValue));
-    const xScale  = linearScale(0, maxVal || 1, 0, w);
-    const barH    = Math.min(32, Math.floor(h / top.length) - 6);
-    const totalBH = (barH + 6) * top.length;
-    const startY  = margin.top + (h - totalBH) / 2;
-
-    const metricLabel = metric === 'uniques' ? 'Unique Visitors' : 'Page Views';
-    ctx.fillStyle = '#e8eaf0';
-    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`Top ${topN} Pages - ${metricLabel}`, canvas.width / 2, 10);
-
-    const tickCount = 5;
-    for (let t = 0; t <= tickCount; t++) {
-        const val = (maxVal / tickCount) * t;
-        const x   = margin.left + xScale(val);
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-        ctx.lineWidth = 1;
-        ctx.moveTo(x, margin.top);
-        ctx.lineTo(x, margin.top + h);
-        ctx.stroke();
-        ctx.fillStyle = '#717a96';
-        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(Math.round(val).toLocaleString(), x, margin.top + h + 18);
-    }
-
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1;
-    ctx.moveTo(margin.left, margin.top);
-    ctx.lineTo(margin.left, margin.top + h);
-    ctx.stroke();
-
-    top.forEach((entry, i) => {
-        const y    = startY + i * (barH + 6);
-        const val  = getValue(entry);
-        const barW = xScale(val);
-
-        const grad = ctx.createLinearGradient(margin.left, 0, margin.left + barW, 0);
-        grad.addColorStop(0, '#b94ff7');
-        grad.addColorStop(1, 'rgba(185,79,247,0.4)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect
-            ? ctx.roundRect(margin.left, y, barW, barH, 3)
-            : ctx.rect(margin.left, y, barW, barH);
-        ctx.fill();
-
-        const label = pathname(entry.url);
-        ctx.fillStyle = '#e8eaf0';
-        ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label.length > 30 ? label.slice(0, 28) + '...' : label,
-            margin.left - 8, y + barH / 2);
-
-        ctx.fillStyle = '#717a96';
-        ctx.textAlign = 'left';
-        ctx.fillText(val.toLocaleString(), margin.left + barW + 6, y + barH / 2);
-    });
-
-    const caption = document.getElementById('bar-caption');
-    if (caption) caption.textContent = `Top ${topN} pages by ${metricLabel.toLowerCase()}`;
-
-    const tooltipEl = document.getElementById('toppages-tooltip');
-    canvas.addEventListener('mousemove', e => {
-        if (!tooltipEl) return;
-        const rect   = canvas.getBoundingClientRect();
-        const scaleX = canvas.width  / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const my     = (e.clientY - rect.top) * scaleY;
-
-        let hi = -1;
-        top.forEach((_, i) => {
-            const barTop    = startY + i * (barH + 6);
-            const barBottom = barTop + barH;
-            if (my >= barTop && my <= barBottom) hi = i;
-        });
-
-        if (hi >= 0) {
-            const entry  = top[hi];
-            const val    = getValue(entry);
-            const barTop = startY + hi * (barH + 6);
-            const barW   = xScale(val);
-
-            const barRightScreenX = (margin.left + barW) / scaleX;
-            const barMidScreenY   = (barTop + barH / 2) / scaleY;
-
-            tooltipEl.innerHTML =
-                `<strong>${escHtml(pathname(entry.url))}</strong><br>` +
-                `${metricLabel}: ${val.toLocaleString()}<br>` +
-                `Unique visitors: ${entry.sessions.size.toLocaleString()}`;
-            tooltipEl.style.display = 'block';
-
-            const TOOLTIP_W = 180;
-            let tLeft = barRightScreenX + 10;
-            let tTop  = barMidScreenY - 36;
-            if (tLeft + TOOLTIP_W > rect.width) tLeft = barRightScreenX - TOOLTIP_W - 10;
-            if (tLeft < 0)                      tLeft = 0;
-            if (tTop < 0)                       tTop  = barMidScreenY + 5;
-            tooltipEl.style.left = `${tLeft}px`;
-            tooltipEl.style.top  = `${tTop}px`;
-        } else {
-            tooltipEl.style.display = 'none';
-        }
-    }, { signal: topPagesBarAbort.signal });
-
-    canvas.addEventListener('mouseleave', () => {
-        if (tooltipEl) tooltipEl.style.display = 'none';
-    }, { signal: topPagesBarAbort.signal });
-}
-
 //  Chart: Time-on-Page Trend (line) 
 
 function drawTrendLine(urlMap, selectedUrl) {
@@ -1521,240 +1353,6 @@ function drawTrendLine(urlMap, selectedUrl) {
     }
 }
 
-//  Chart: Entry vs Exit Stacked Bar 
-
-function drawEntryExitBar(urlMap, sessionMap) {
-    const canvas = document.getElementById('entryExitChart');
-    if (!canvas) return;
-
-    const top = [...urlMap.values()]
-        .filter(e => e.views > 0)
-        .sort((a, b) => b.entrances - a.entrances)
-        .slice(0, 10);
-
-    const ctx    = canvas.getContext('2d');
-    const margin = { top: 60, right: 25, bottom: 90, left: 55 };
-    const cW     = canvas.width  - margin.left - margin.right;
-    const cH     = canvas.height - margin.top  - margin.bottom;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (top.length === 0) {
-        ctx.fillStyle = '#717a96';
-        ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('No session data available', canvas.width / 2, canvas.height / 2);
-        return;
-    }
-
-    const barW   = Math.floor(cW / top.length) - 10;
-    const yScale = linearScale(0, 100, margin.top + cH, margin.top);
-
-    if (entryExitAbort) entryExitAbort.abort();
-    entryExitAbort = new AbortController();
-
-    for (let pct = 0; pct <= 100; pct += 20) {
-        const y = yScale(pct);
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-        ctx.lineWidth = 1;
-        ctx.moveTo(margin.left, y);
-        ctx.lineTo(margin.left + cW, y);
-        ctx.stroke();
-        ctx.fillStyle = '#717a96';
-        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${pct}%`, margin.left - 8, y);
-    }
-
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 2;
-    ctx.moveTo(margin.left, margin.top);
-    ctx.lineTo(margin.left, margin.top + cH);
-    ctx.lineTo(margin.left + cW, margin.top + cH);
-    ctx.stroke();
-
-    ctx.fillStyle = '#e8eaf0';
-    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('Entry vs Exit Rate - Top Landing Pages', canvas.width / 2, 10);
-
-    const legendX = canvas.width - 160;
-    const legendY = 32;
-    ctx.fillStyle = '#b94ff7';
-    ctx.fillRect(legendX, legendY, 12, 12);
-    ctx.fillStyle = '#e8eaf0';
-    ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Entry rate', legendX + 16, legendY + 6);
-
-    ctx.fillStyle = '#f87171';
-    ctx.fillRect(legendX + 90, legendY, 12, 12);
-    ctx.fillStyle = '#e8eaf0';
-    ctx.fillText('Exit rate', legendX + 106, legendY + 6);
-
-    top.forEach((entry, i) => {
-        const x             = margin.left + i * (barW + 10) + 5;
-        const entryRate     = entry.views > 0 ? (entry.entrances / entry.views) * 100 : 0;
-        const exitRate      = entry.views > 0 ? (entry.exits     / entry.views) * 100 : 0;
-        const entryRateDisp = Math.min(entryRate, 100);
-        const exitRateDisp  = Math.min(exitRate, Math.max(0, 100 - entryRateDisp));
-        const baseline      = margin.top + cH;
-        const entryH        = baseline - yScale(entryRateDisp);
-        const exitH         = baseline - yScale(exitRateDisp);
-
-        ctx.fillStyle = '#b94ff7';
-        ctx.fillRect(x, baseline - entryH, barW, entryH);
-
-        ctx.fillStyle = '#f87171';
-        ctx.fillRect(x, baseline - entryH - exitH, barW, exitH);
-
-        const label = pathname(entry.url);
-        const short = label.length > 20 ? label.slice(0, 18) + '...' : label;
-        ctx.save();
-        ctx.translate(x + barW / 2, baseline + 8);
-        ctx.rotate(-35 * Math.PI / 180);
-        ctx.fillStyle = '#717a96';
-        ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(short, 0, 0);
-        ctx.restore();
-    });
-
-    const tooltipEl = document.getElementById('entryexit-tooltip');
-    canvas.addEventListener('mousemove', e => {
-        if (!tooltipEl) return;
-        const rect   = canvas.getBoundingClientRect();
-        const scaleX = canvas.width  / rect.width;
-        const mx     = (e.clientX - rect.left) * scaleX;
-
-        let hi = -1;
-        top.forEach((_, i) => {
-            const barLeft  = margin.left + i * (barW + 10) + 5;
-            const barRight = barLeft + barW;
-            if (mx >= barLeft && mx <= barRight) hi = i;
-        });
-
-        if (hi >= 0) {
-            const entry      = top[hi];
-            const entryRate  = entry.views > 0 ? (entry.entrances / entry.views) * 100 : 0;
-            const exitRate   = entry.views > 0 ? (entry.exits     / entry.views) * 100 : 0;
-            const scaleY     = canvas.height / rect.height;
-            const barCenterX = (margin.left + hi * (barW + 10) + 5 + barW / 2) / scaleX;
-            const topBarY    = yScale(Math.min(entryRate + exitRate, 100)) / scaleY;
-
-            tooltipEl.innerHTML =
-                `<strong>${escHtml(pathname(entry.url))}</strong><br>` +
-                `Views: ${entry.views.toLocaleString()}<br>` +
-                `Entry rate: ${entryRate.toFixed(1)}%<br>` +
-                `Exit rate: ${exitRate.toFixed(1)}%`;
-            tooltipEl.style.display = 'block';
-
-            const TOOLTIP_W = 170;
-            let tLeft = barCenterX - TOOLTIP_W / 2;
-            let tTop  = topBarY - 90;
-            if (tLeft < 0)                      tLeft = 0;
-            if (tLeft + TOOLTIP_W > rect.width) tLeft = rect.width - TOOLTIP_W;
-            if (tTop < 0)                       tTop  = topBarY + 10;
-            tooltipEl.style.left = `${tLeft}px`;
-            tooltipEl.style.top  = `${tTop}px`;
-        } else {
-            tooltipEl.style.display = 'none';
-        }
-    }, { signal: entryExitAbort.signal });
-
-    canvas.addEventListener('mouseleave', () => {
-        if (tooltipEl) tooltipEl.style.display = 'none';
-    }, { signal: entryExitAbort.signal });
-}
-
-//  Table: Top Pages Detail 
-
-function renderTopDetail(urlMap, bounceSessions) {
-    const tbody  = document.getElementById('topdetail-tbody');
-    const wrap   = document.getElementById('topdetail-wrap');
-    const status = document.getElementById('perf-status');
-    if (!tbody) return;
-
-    const top20 = [...urlMap.values()]
-        .sort((a, b) => b.views - a.views)
-        .slice(0, 20);
-
-    if (top20.length === 0) {
-        if (status) status.textContent = 'No pageview data for this filter.';
-        return;
-    }
-
-    tbody.innerHTML = '';
-    top20.forEach((entry, i) => {
-        const avgMs = entry.durationCount > 0
-            ? entry.totalDuration / entry.durationCount : null;
-        const path  = pathname(entry.url);
-
-        const tr = document.createElement('tr');
-
-        const tdRank = document.createElement('td');
-        tdRank.textContent = i + 1;
-        tdRank.style.color = 'var(--text-muted)';
-        tr.appendChild(tdRank);
-
-        const tdPage = document.createElement('td');
-        tdPage.dataset.col = 'page';
-        const a = document.createElement('a');
-        a.href        = entry.url;
-        a.textContent = path;
-        a.title       = entry.url;
-        tdPage.appendChild(a);
-        tr.appendChild(tdPage);
-
-        const tdViews = document.createElement('td');
-        tdViews.textContent = entry.views.toLocaleString();
-        tr.appendChild(tdViews);
-
-        const tdUniq = document.createElement('td');
-        tdUniq.textContent = entry.sessions.size.toLocaleString();
-        tr.appendChild(tdUniq);
-
-        const tdTime = document.createElement('td');
-        if (avgMs === null) {
-            tdTime.textContent = '-';
-            tdTime.className   = 'null-val';
-        } else {
-            tdTime.textContent = fmtDuration(avgMs);
-        }
-        tr.appendChild(tdTime);
-
-        const tdEnt = document.createElement('td');
-        tdEnt.textContent = entry.entrances.toLocaleString();
-        tr.appendChild(tdEnt);
-
-        const tdExit = document.createElement('td');
-        tdExit.textContent = entry.exits.toLocaleString();
-        tr.appendChild(tdExit);
-
-        const tdErr = document.createElement('td');
-        if (entry.errors > 0) {
-            tdErr.textContent = entry.errors.toLocaleString();
-            tdErr.className   = 'error-val';
-        } else {
-            tdErr.textContent = '-';
-            tdErr.className   = 'null-val';
-        }
-        tr.appendChild(tdErr);
-
-        tbody.appendChild(tr);
-    });
-
-    if (status) status.hidden = true;
-    if (wrap)   wrap.hidden   = false;
-}
-
 //  Populate selects 
 
 function populateTrendSelect(urlMap) {
@@ -1806,20 +1404,12 @@ function refreshAllSections() {
     const vitalsInRange        = getTimeFilteredVitals(cachedVitals);
     const filteredTechno      = getFilteredTechno(cachedTechno);
 
-    const { urlMap, bounceSessions, sessionMap } =
+    const { urlMap, bounceSessions } =
         buildAggregates(filteredRows, filteredSessionData);
 
-    // Existing charts
-    const barMetric = document.getElementById('bar-metric-select');
-    const barTopN   = document.getElementById('bar-topn-select');
     const trendSel  = document.getElementById('trend-page-select');
 
-    drawTopPagesBar(urlMap, barMetric?.value ?? 'views', Number(barTopN?.value ?? 10));
     drawTrendLine(urlMap, trendSel?.value ?? '');
-    drawEntryExitBar(urlMap, sessionMap);
-
-    // Tables
-    renderTopDetail(urlMap, bounceSessions);
 
     const uniqueErrorMap = buildUniqueErrorMap(cachedErrors);
     renderUnderperf(urlMap, bounceSessions, uniqueErrorMap);
@@ -1862,9 +1452,7 @@ function bindFilterControls() {
         refreshVitalsSection(getTimeFilteredVitals(cachedVitals));
     });
 
-    // Chart controls (metric / topN / trend page)
-    document.getElementById('bar-metric-select')?.addEventListener('change', () => refreshAllSections());
-    document.getElementById('bar-topn-select')?.addEventListener('change',   () => refreshAllSections());
+    // Chart controls (trend page)
     document.getElementById('trend-page-select')?.addEventListener('change', () => refreshAllSections());
     document.getElementById('vital-stat-select')?.addEventListener('change', () => refreshAllSections());
 }
@@ -1899,8 +1487,6 @@ async function init() {
     } catch (err) {
         console.error('[performance]', err);
         showError(err.message);
-        const status = document.getElementById('perf-status');
-        if (status) status.hidden = true;
     }
 }
 
