@@ -464,32 +464,19 @@ function renderBrowserChart(errors) {
 
     let startAngle = -Math.PI / 2;
     sorted.forEach(([name, val], i) => {
-      const slice = (val / total) * 2 * Math.PI;
-      const color = COLORS[i % COLORS.length];
-      const isHi  = i === hi;
-      const offset = isHi ? 8 : 0;
-      const midAngle = startAngle + slice / 2;
+      const slice  = (val / total) * 2 * Math.PI;
+      const color  = COLORS[i % COLORS.length];
+      const isHi   = i === hi;
+      const outerR = isHi ? R + 6 : R;
 
+      // Arc from outer radius down to inner radius (counter-clockwise) — no
+      // explicit moveTo connecting line, so no stray stroke across the hole.
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(midAngle) * offset, cy + Math.sin(midAngle) * offset);
-      ctx.arc(
-        cx + Math.cos(midAngle) * offset,
-        cy + Math.sin(midAngle) * offset,
-        R, startAngle, startAngle + slice
-      );
-      ctx.arc(
-        cx + Math.cos(midAngle) * offset,
-        cy + Math.sin(midAngle) * offset,
-        r, startAngle + slice, startAngle, true
-      );
+      ctx.arc(cx, cy, outerR, startAngle, startAngle + slice);
+      ctx.arc(cx, cy, r, startAngle + slice, startAngle, true);
       ctx.closePath();
-      ctx.fillStyle = isHi ? color : color + 'bb';
+      ctx.fillStyle = isHi ? color : color + 'aa';
       ctx.fill();
-      if (isHi) {
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
 
       startAngle += slice;
     });
@@ -798,19 +785,42 @@ function renderRecommendations(errors) {
   const pageItems = sorted.map(([url, s], i) => {
     const path = pathname(url) || '/';
     const pct  = total > 0 ? ((s.count / total) * 100).toFixed(0) : 0;
-    const dominantType = [...s.types.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
-    const hint = dominantType === 'TypeError'      ? 'Check for null/undefined references or missing API responses.'
-               : dominantType === 'ReferenceError' ? "A variable or function may be used before it's defined."
-               : dominantType === 'SyntaxError'    ? 'Inspect recent deployments for malformed JS bundles.'
-               : dominantType === 'NetworkError'   ? 'Review network timeouts or CORS configuration.'
-               : 'Investigate recent changes on this page.';
+
+    // All error types on this page, sorted by frequency
+    const typeList = [...s.types.entries()].sort((a, b) => b[1] - a[1]);
+    const dominantType  = typeList[0]?.[0] ?? '—';
+    const dominantCount = typeList[0]?.[1] ?? 0;
+
+    // Build a specific, multi-error-type hint
+    const hints = [];
+
+    for (const [type, count] of typeList) {
+      const share = s.count > 0 ? Math.round((count / s.count) * 100) : 0;
+      if (type === 'TypeError')
+        hints.push(`${share}% are TypeErrors — audit ${escHtml(path)} for unchecked null/undefined values, especially after async data fetches or DOM lookups that may return null.`);
+      else if (type === 'ReferenceError')
+        hints.push(`${share}% are ReferenceErrors — a variable or function used on ${escHtml(path)} may be out of scope or loaded out of order; check script load sequence.`);
+      else if (type === 'SyntaxError')
+        hints.push(`${share}% are SyntaxErrors — likely a malformed JS bundle served to ${escHtml(path)}; compare against the last successful deployment.`);
+      else if (type === 'NetworkError')
+        hints.push(`${share}% are NetworkErrors — ${escHtml(path)} has failing resource requests; verify API endpoints, CORS headers, and CDN availability.`);
+      else if (type === 'RangeError')
+        hints.push(`${share}% are RangeErrors — a value on ${escHtml(path)} exceeds an allowed range (e.g. invalid array length or recursion depth).`);
+      else if (type !== '—')
+        hints.push(`${share}% are ${escHtml(type)} — review recent changes to ${escHtml(path)}.`);
+    }
+
+    const hintText = hints.length
+      ? hints.join(' ')
+      : `Investigate recent changes to ${escHtml(path)}.`;
+
     return `
       <li class="rec-item">
         <span class="rec-priority">${PRIORITY_ICONS[i]}</span>
         <div class="rec-body">
           <strong class="rec-page">${escHtml(path)}</strong>
           <span class="rec-meta">${s.count.toLocaleString()} errors · ${pct}% of total · Dominant: <em>${escHtml(dominantType)}</em></span>
-          <p class="rec-hint">${escHtml(hint)}</p>
+          <p class="rec-hint">${hintText}</p>
         </div>
       </li>`;
   });
