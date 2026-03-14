@@ -469,6 +469,214 @@
 .wf-bar.wf-api   { background: #b94ff7; }
 .wf-bar.wf-other { background: #717a96; }
 
+/* ── Tier 3: Segmentation (HTML + CSS only) ────────────────────────── */
+:root {
+    --seg-panel-bg: #0d1318;
+    --seg-panel-border: #1e2d3a;
+    --seg-title: #ffffff;
+    --seg-muted: #4a6375;
+    --seg-light: #d4e8f0;
+    --seg-cyan: #00e5ff;
+    --seg-green: #7fff6e;
+    --seg-amber: #ffbe0b;
+    --seg-red: #ff6b6b;
+    --seg-track: #121920;
+    --seg-base: #1e2d3a;
+    --seg-op-bg: rgba(255, 107, 107, 0.06);
+    --seg-op-border: rgba(255, 107, 107, 0.2);
+}
+
+.segmentation-section {
+    padding: 1.5rem var(--gap);
+    border-top: 1px solid var(--border);
+}
+
+.segmentation-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.panel {
+    background: var(--seg-panel-bg);
+    border: 1px solid var(--seg-panel-border);
+    border-radius: 6px;
+    padding: 18px;
+}
+
+.panel-title {
+    margin: 0 0 16px;
+    font-family: Syne, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--seg-title);
+}
+
+.device-seg-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.device-donut {
+    flex: 0 0 80px;
+    width: 80px;
+    height: 80px;
+}
+
+.donut-base,
+.donut-segment {
+    fill: none;
+    stroke-width: 12;
+    transform: rotate(-90deg);
+    transform-origin: 40px 40px;
+}
+
+.donut-base {
+    stroke: var(--seg-base);
+}
+
+.donut-segment {
+    stroke-linecap: butt;
+}
+
+.donut-mobile {
+    stroke: var(--seg-cyan);
+    stroke-dasharray: 113.10 188.50;
+    stroke-dashoffset: 0;
+}
+
+.donut-desktop {
+    stroke: var(--seg-green);
+    stroke-dasharray: 67.86 188.50;
+    stroke-dashoffset: -113.10;
+}
+
+.donut-tablet {
+    stroke: var(--seg-amber);
+    stroke-dasharray: 7.54 188.50;
+    stroke-dashoffset: -180.96;
+}
+
+.device-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    min-width: 0;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 8px;
+}
+
+.dot-mobile { background: var(--seg-cyan); }
+.dot-desktop { background: var(--seg-green); }
+.dot-tablet { background: var(--seg-amber); }
+
+.legend-name {
+    color: var(--seg-muted);
+    min-width: 54px;
+}
+
+.legend-pct {
+    color: var(--seg-light);
+    min-width: 28px;
+}
+
+.legend-avg {
+    margin-left: auto;
+    font-weight: 600;
+}
+
+.avg-mobile { color: var(--seg-cyan); }
+.avg-desktop { color: var(--seg-green); }
+.avg-tablet { color: var(--seg-amber); }
+
+.geo-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bar-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 45px;
+    gap: 10px;
+    align-items: center;
+}
+
+.bar-label {
+    font-size: 11px;
+    color: var(--seg-muted);
+    text-align: right;
+}
+
+.bar-track {
+    height: 6px;
+    background: var(--seg-track);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 99px;
+}
+
+.fill-green { background: var(--seg-green); }
+.fill-amber { background: var(--seg-amber); }
+.fill-red { background: var(--seg-red); }
+
+.bar-value {
+    font-size: 11px;
+    text-align: right;
+    font-weight: 600;
+}
+
+.value-green { color: var(--seg-green); }
+.value-amber { color: var(--seg-amber); }
+.value-red { color: var(--seg-red); }
+
+.opportunity-box {
+    margin-top: 12px;
+    background: var(--seg-op-bg);
+    border: 1px solid var(--seg-op-border);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.opportunity-label {
+    margin: 0 0 6px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--seg-red);
+}
+
+.opportunity-body {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--seg-light);
+}
+
+@media (max-width: 900px) {
+    .segmentation-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ── Tier 3: Geography segmentation ─────────────────────────────────── */
 .geo-section {
     padding: 1.5rem var(--gap);
@@ -487,9 +695,37 @@
     background: var(--surface-alt);
 }
 
+.geo-columns {
+    display: grid;
+    grid-template-columns: 160px 1fr 120px;
+    align-items: center;
+    padding: .35rem .5rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, .02);
+    color: var(--text-muted);
+    font-size: .67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.geo-columns span:last-child {
+    grid-column: 3;
+    text-align: right;
+    padding-right: .5rem;
+}
+
+.geo-row {
+    grid-template-columns: 160px 1fr 120px;
+}
+
 .geo-row .wf-name {
     color: var(--text);
     font-weight: 600;
+}
+
+.geo-row .wf-dur {
+    font-size: .7rem;
 }
 
 .wf-bar.geo-americas { background: #3b82f6; }
@@ -498,6 +734,14 @@
 .wf-bar.geo-africa { background: #f87171; }
 .wf-bar.geo-australia { background: #b94ff7; }
 .wf-bar.geo-other { background: #717a96; }
+
+.geo-tooltip {
+    position: fixed;
+    z-index: 30;
+    font-size: .72rem;
+    line-height: 1.35;
+    white-space: nowrap;
+}
 
 .wf-dur {
     padding-right: .5rem;
