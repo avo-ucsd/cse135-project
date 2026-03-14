@@ -13,6 +13,7 @@ Login with credentials:
 - Password: dictator135
 
 1. You have access to every page.
+2. Go to 
 
 
 ### Analyst
