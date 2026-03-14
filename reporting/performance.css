@@ -494,13 +494,6 @@ td[data-col="page"] { max-width: 380px; }
     white-space: nowrap;
 }
 
-#perf-status {
-    color: var(--text-muted);
-    font-size: .88rem;
-    padding: 2rem 0;
-    text-align: center;
-}
-
 /* ── Tier 3: Device segmentation ─────────────────────────────────────── */
 .device-section {
     padding: 1.5rem var(--gap);

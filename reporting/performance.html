@@ -279,33 +279,6 @@
       </figure>
     </section>
 
-    <!-- ── Chart: Top Pages Bar ──────────────────────────────────────────── -->
-    <section aria-labelledby="bar-heading" class="chart-section">
-      <header class="section-header">
-        <h2 id="bar-heading">Top Pages</h2>
-        <form class="perf-controls" aria-label="Top pages controls">
-          <label for="bar-metric-select">Metric</label>
-          <select id="bar-metric-select">
-            <option value="views" selected>Page Views</option>
-            <option value="uniques">Unique Visitors</option>
-          </select>
-          <label for="bar-topn-select">Show top</label>
-          <select id="bar-topn-select">
-            <option value="5">5</option>
-            <option value="10" selected>10</option>
-            <option value="20">20</option>
-          </select>
-        </form>
-      </header>
-      <figure>
-        <canvas id="topPagesChart" width="900" height="320"
-                aria-label="Horizontal bar chart of top pages by selected metric"
-                role="img"></canvas>
-        <div id="toppages-tooltip" class="perf-tooltip"></div>
-        <figcaption id="bar-caption">Top 10 pages by page views</figcaption>
-      </figure>
-    </section>
-
     <!-- ── Chart: Time-on-Page Trend ─────────────────────────────────────── -->
     <section aria-labelledby="trend-heading" class="chart-section">
       <header class="section-header">
@@ -324,48 +297,6 @@
         <div id="trend-tooltip" class="perf-tooltip"></div>
         <figcaption id="trend-caption">Average time on page per day — last 30 days</figcaption>
       </figure>
-    </section>
-
-    <!-- ── Chart: Entry vs Exit Rate ────────────────────────────────────── -->
-    <section aria-labelledby="entryexit-heading" class="chart-section">
-      <h2 id="entryexit-heading">Entry vs Exit Rate</h2>
-      <figure>
-        <canvas id="entryExitChart" width="900" height="320"
-                aria-label="Stacked bar chart of entry and exit rates per landing page"
-                role="img"></canvas>
-        <div id="entryexit-tooltip" class="perf-tooltip"></div>
-        <figcaption>Entry rate (session-first pageview) vs exit rate
-                    (session-last pageview) for top landing pages</figcaption>
-      </figure>
-    </section>
-
-    <!-- ── Table: Top Pages Detail ───────────────────────────────────────── -->
-    <section aria-labelledby="topdetail-heading" class="table-section">
-      <header class="section-header">
-        <h2 id="topdetail-heading">Top Pages — Detailed</h2>
-      </header>
-
-      <p id="perf-status" role="status">Loading…</p>
-
-      <div class="table-scroll" id="topdetail-wrap" hidden>
-        <table class="perf-table"
-               aria-label="Detailed performance metrics for top pages">
-          <caption class="sr-only">Top pages ranked by view count with engagement metrics</caption>
-          <thead>
-            <tr>
-              <th scope="col" data-col="rank">#</th>
-              <th scope="col" data-col="page">Page</th>
-              <th scope="col" data-col="views">Views</th>
-              <th scope="col" data-col="unique">Unique</th>
-              <th scope="col" data-col="avg_time">Avg. Time</th>
-              <th scope="col" data-col="entrances">Entrances</th>
-              <th scope="col" data-col="exits">Exits</th>
-              <th scope="col" data-col="errors">Errors</th>
-            </tr>
-          </thead>
-          <tbody id="topdetail-tbody"></tbody>
-        </table>
-      </div>
     </section>
 
     <!-- ── Table: Underperforming Pages ──────────────────────────────────── -->
