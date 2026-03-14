@@ -15,3 +15,246 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Chart section header with range controls ------------ */
+.chart-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chart-section-header h2 {
+  margin: 0;
+}
+
+/* --- Range toggle buttons --------------------------------- */
+.range-controls {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 3px;
+}
+
+.range-btn {
+  background: transparent;
+  border: none;
+  color: #717a96;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.range-btn:hover {
+  background: rgba(185, 79, 247, 0.15);
+  color: #c0c8e0;
+}
+
+.range-btn.active {
+  background: rgba(185, 79, 247, 0.25);
+  color: #e8eaf0;
+}
+
+/* --- Section subtitle ------------------------------------ */
+.section-subtitle {
+  margin: 0.15rem 0 0.75rem;
+  font-size: 0.82rem;
+  color: #717a96;
+}
+
+/* --- Error log — compact grouped rows ------------------- */
+.error-log-header-row,
+.error-log-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 2fr 60px 130px;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.error-log-header-row {
+  color: #717a96;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.error-log-row {
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.error-log-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.error-log-row + .error-log-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.error-badge {
+  display: inline-block;
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.error-log-page a {
+  color: #c0c8e0;
+  text-decoration: none;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.error-log-page a:hover {
+  color: #b94ff7;
+  text-decoration: underline;
+}
+
+.error-log-msg {
+  color: #717a96;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.error-log-count {
+  font-weight: 700;
+  color: #e8eaf0;
+  text-align: right;
+}
+
+.error-log-time {
+  color: #717a96;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.empty-state {
+  color: #717a96;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 700px) {
+  .error-log-header-row,
+  .error-log-row {
+    grid-template-columns: 100px 1fr 50px;
+    grid-template-rows: auto auto;
+  }
+  .error-log-msg,
+  .error-log-time {
+    display: none;
+  }
+}
+
+/* --- Error type pill in table ---------------------------- */
+.error-type-pill {
+  display: inline-block;
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(185, 79, 247, 0.15);
+  color: #b94ff7;
+  border: 1px solid rgba(185, 79, 247, 0.3);
+  white-space: nowrap;
+}
+
+/* --- Recommendations panel ------------------------------- */
+.recommendations-section {
+  background: rgba(185, 79, 247, 0.04);
+  border: 1px solid rgba(185, 79, 247, 0.15);
+}
+
+.rec-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rec-item {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  transition: background 0.15s;
+}
+
+.rec-item:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.rec-loading {
+  color: #717a96;
+  font-size: 0.85rem;
+}
+
+.rec-priority {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.rec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.rec-page {
+  font-size: 0.9rem;
+  color: #e8eaf0;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-meta {
+  font-size: 0.78rem;
+  color: #717a96;
+}
+
+.rec-meta em {
+  color: #b94ff7;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.rec-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: #9aa3bf;
+  line-height: 1.45;
+}

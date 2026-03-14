@@ -43,12 +43,20 @@
       </article>
     </section>
 
+    <!-- Row 1: Error Trend + Top Affected Pages -->
     <div class="chart-grid">
       <section aria-labelledby="trend-heading" class="chart-section">
-        <h2 id="trend-heading">Error Trend</h2>
+        <header class="chart-section-header">
+          <h2 id="trend-heading">Error Trend</h2>
+          <div class="range-controls" id="trendRangeControls" role="group" aria-label="Select time range">
+            <button class="range-btn" data-range="0">24h</button>
+            <button class="range-btn" data-range="7">7d</button>
+            <button class="range-btn active" data-range="30">30d</button>
+          </div>
+        </header>
         <figure>
           <canvas id="errorTrendChart" width="500" height="280"
-            aria-label="Line chart of daily error counts over 30 days" role="img"></canvas>
+            aria-label="Line chart of error counts over time" role="img"></canvas>
           <figcaption>Daily errors, last 30 days</figcaption>
           <div class="tooltip" id="trendTooltip"></div>
         </figure>
@@ -65,40 +73,71 @@
       </section>
     </div>
 
+    <!-- Row 2: Browser + Platform breakdown -->
+    <div class="chart-grid">
+      <section aria-labelledby="browser-heading" class="chart-section">
+        <h2 id="browser-heading">Errors by Browser</h2>
+        <figure>
+          <canvas id="browserChart" width="500" height="280"
+            aria-label="Donut chart of errors broken down by browser" role="img"></canvas>
+          <figcaption>Error distribution across browsers</figcaption>
+          <div class="tooltip" id="browserTooltip"></div>
+        </figure>
+      </section>
+
+      <section aria-labelledby="platform-heading" class="chart-section">
+        <h2 id="platform-heading">Errors by Platform</h2>
+        <figure>
+          <canvas id="platformChart" width="500" height="280"
+            aria-label="Horizontal bar chart of errors broken down by platform/OS" role="img"></canvas>
+          <figcaption>Error distribution across operating systems</figcaption>
+          <div class="tooltip" id="platformTooltip"></div>
+        </figure>
+      </section>
+    </div>
+
+    <!-- Recommended Actions -->
+    <section aria-labelledby="rec-heading" class="table-section recommendations-section">
+      <header class="section-header">
+        <h2 id="rec-heading">⚡ Recommended Actions</h2>
+        <p class="section-subtitle">Pages with the highest error counts that should be addressed first.</p>
+      </header>
+      <ul id="recommendations-list" class="rec-list" aria-live="polite">
+        <li class="rec-item rec-loading">Loading recommendations…</li>
+      </ul>
+    </section>
+
+    <!-- Recent Error Log — compact grouped view -->
     <section aria-labelledby="error-log-heading" class="table-section">
       <header class="section-header">
         <h2 id="error-log-heading">Recent Error Log</h2>
+        <p class="section-subtitle">Grouped by error type and page. Top 12 most frequent.</p>
       </header>
-      <figure>
-        <table>
-          <caption class="sr-only">Most recent error events</caption>
-          <thead>
-            <tr>
-              <th scope="col">Time</th>
-              <th scope="col">Page</th>
-              <th scope="col">Error Type</th>
-              <th scope="col">Message</th>
-              <th scope="col">Count</th>
-              <th scope="col">Session</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </figure>
+      <div class="error-log-header-row">
+        <span>Type</span>
+        <span>Page</span>
+        <span>Message</span>
+        <span>Count</span>
+        <span>Last Seen</span>
+      </div>
+      <div id="error-log-container" aria-live="polite"></div>
     </section>
 
+    <!-- Top Pages by Error Count -->
     <section aria-labelledby="top-pages-table-heading" class="table-section">
       <header class="section-header">
         <h2 id="top-pages-table-heading">Top Pages by Error Count</h2>
+        <p class="section-subtitle">Includes the dominant error type to help target dev fixes.</p>
       </header>
       <figure>
         <table>
-          <caption class="sr-only">Pages ranked by total errors</caption>
+          <caption class="sr-only">Pages ranked by total errors with dominant error type</caption>
           <thead>
             <tr>
               <th scope="col">#</th>
               <th scope="col">Page</th>
               <th scope="col">Total Errors</th>
+              <th scope="col">Top Error Type</th>
               <th scope="col">Last Seen</th>
             </tr>
           </thead>
