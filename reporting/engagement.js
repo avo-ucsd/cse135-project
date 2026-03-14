@@ -785,7 +785,7 @@ function initReportActions() {
       window.alert('PDF uploaded to server successfully.');
     } catch (err) {
       console.error('[engagement:reports] upload failed', err);
-      window.alert('Failed to upload PDF to server.');
+      window.alert(`Failed to upload PDF to server. ${err.message ?? ''}`);
     }
   });
 }

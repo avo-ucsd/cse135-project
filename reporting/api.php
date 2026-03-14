@@ -780,7 +780,14 @@ switch ($resource) {
                     $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : null;
                     $mime = $finfo ? (string)finfo_file($finfo, $tmpPath) : 'application/pdf';
                     if ($finfo) finfo_close($finfo);
-                    if ($mime !== 'application/pdf' && $mime !== 'application/octet-stream') {
+                    $allowedMimes = [
+                        'application/pdf',
+                        'application/octet-stream',
+                        'application/x-pdf',
+                        'application/acrobat',
+                        'application/vnd.pdf',
+                    ];
+                    if (!in_array($mime, $allowedMimes, true)) {
                         respond(400, ['error' => 'Uploaded file is not recognized as PDF']);
                     }
 
@@ -794,6 +801,9 @@ switch ($resource) {
                         if (!mkdir($uploadDir, 0755, true)) {
                             respond(500, ['error' => 'Failed to create upload directory']);
                         }
+                    }
+                    if (!is_writable($uploadDir)) {
+                        respond(500, ['error' => 'Upload directory is not writable: ' . $uploadDir]);
                     }
 
                     $safeReportId = sanitizeSlug((string)$reportRow['report_id']);
