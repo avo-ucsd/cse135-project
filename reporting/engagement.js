@@ -610,6 +610,13 @@ function applyFilters() {
   renderSessionsTable(state.filtered);
 }
 
+function syncFiltersFromDOM() {
+  state.filters.browser = document.getElementById('filterBrowser')?.value ?? 'all';
+  state.filters.device = document.getElementById('filterDevice')?.value ?? 'all';
+  state.filters.channel = document.getElementById('filterChannel')?.value ?? 'all';
+  state.filters.country = document.getElementById('filterCountry')?.value ?? 'all';
+}
+
 function renderAggregation(rows) {
   setText('[data-agg="sessions"]', rows.length.toLocaleString());
   setText('[data-agg="duration"]', fmtDuration(avg(rows.map((r) => r.durationMs))));
@@ -645,15 +652,12 @@ function bindEvents() {
     renderCohortTable(state.sessions, state.cohortGranularity);
   });
 
-  const form = document.getElementById('aggregationFilters');
-  form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    state.filters.browser = document.getElementById('filterBrowser')?.value ?? 'all';
-    state.filters.device = document.getElementById('filterDevice')?.value ?? 'all';
-    state.filters.channel = document.getElementById('filterChannel')?.value ?? 'all';
-    state.filters.country = document.getElementById('filterCountry')?.value ?? 'all';
-    applyFilters();
-  });
+  for (const id of ['filterBrowser', 'filterDevice', 'filterChannel', 'filterCountry']) {
+    document.getElementById(id)?.addEventListener('change', () => {
+      syncFiltersFromDOM();
+      applyFilters();
+    });
+  }
 
   document.getElementById('clearFilters')?.addEventListener('click', () => {
     state.filters = { browser: 'all', device: 'all', channel: 'all', country: 'all' };
