@@ -30,6 +30,19 @@
   margin: 0;
 }
 
+/* --- Page-level range controls (in page header) ---------- */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.page-range-controls {
+  flex-shrink: 0;
+}
+
 /* --- Range toggle buttons --------------------------------- */
 .range-controls {
   display: flex;

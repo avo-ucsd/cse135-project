@@ -18,6 +18,11 @@
         <p class="eyebrow">Analytics</p>
         <h1 id="page-title">Errors &amp; Reliability</h1>
       </hgroup>
+      <div class="range-controls page-range-controls" id="pageRangeControls" role="group" aria-label="Select time range for all charts">
+        <button class="range-btn" data-range="0">24h</button>
+        <button class="range-btn" data-range="7">7d</button>
+        <button class="range-btn active" data-range="30">30d</button>
+      </div>
     </section>
 
     <section aria-label="Error metrics" class="kpi-strip">
@@ -46,14 +51,7 @@
     <!-- Row 1: Error Trend + Top Affected Pages -->
     <div class="chart-grid">
       <section aria-labelledby="trend-heading" class="chart-section">
-        <header class="chart-section-header">
-          <h2 id="trend-heading">Error Trend</h2>
-          <div class="range-controls" id="trendRangeControls" role="group" aria-label="Select time range">
-            <button class="range-btn" data-range="0">24h</button>
-            <button class="range-btn" data-range="7">7d</button>
-            <button class="range-btn active" data-range="30">30d</button>
-          </div>
-        </header>
+        <h2 id="trend-heading">Error Trend</h2>
         <figure>
           <canvas id="errorTrendChart" width="500" height="280"
             aria-label="Line chart of error counts over time" role="img"></canvas>

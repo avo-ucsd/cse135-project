@@ -53,6 +53,25 @@ function parsePayload(raw) {
   } catch { return { type: '—', message: '—', browser: '—', platform: '—' }; }
 }
 
+// ── Time-range filter ─────────────────────────────────────────────────────────
+
+/**
+ * Filter an errors array to only rows within the given window.
+ * days === 0  → last 24 hours
+ * days === 7  → last 7 days
+ * days === 30 → last 30 days
+ */
+function filterErrors(errors, days) {
+  const now    = Date.now();
+  const cutoff = days === 0
+    ? now - 24 * 60 * 60 * 1000
+    : now - days * 24 * 60 * 60 * 1000;
+  return errors.filter(row => {
+    const ts = row.client_timestamp ? new Date(row.client_timestamp).getTime() : 0;
+    return ts >= cutoff;
+  });
+}
+
 // ── KPIs ──────────────────────────────────────────────────────────────────────
 
 function renderKPIs(errors, pvTotal) {
@@ -71,13 +90,10 @@ function renderKPIs(errors, pvTotal) {
 
 // ── Error trend line chart ────────────────────────────────────────────────────
 
-function renderErrorTrendChart(errors) {
+function renderErrorTrendChart(errors, days) {
   const canvas  = document.getElementById('errorTrendChart');
   const tooltip = document.getElementById('trendTooltip');
-  const controls = document.getElementById('trendRangeControls');
   if (!canvas) return;
-
-  let activeRange = 30; // days; 0 = last 24 hours
 
   function buildBuckets(days) {
     const buckets = {};
@@ -289,19 +305,7 @@ function renderErrorTrendChart(errors) {
     render();
   }
 
-  // Wire up range buttons
-  if (controls) {
-    controls.addEventListener('click', e => {
-      const btn = e.target.closest('[data-range]');
-      if (!btn) return;
-      controls.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeRange = Number(btn.dataset.range);
-      drawChart(activeRange);
-    });
-  }
-
-  drawChart(activeRange);
+  drawChart(days);
 }
 
 // ── Top affected pages bar chart ──────────────────────────────────────────────
@@ -904,16 +908,38 @@ async function init() {
       apiFetch('/errors'),
       apiFetch('/pageviews?limit=1'),
     ]);
-    const errors  = errData.data ?? [];
-    const pvTotal = pvMeta.total  ?? 0;
-    renderKPIs(errors, pvTotal);
-    renderErrorTrendChart(errors);
-    renderTopPagesChart(errors);
-    renderBrowserChart(errors);
-    renderPlatformChart(errors);
-    renderErrorLog(errors);
-    renderTopPagesTable(errors);
-    renderRecommendations(errors);
+    const allErrors = errData.data ?? [];
+    const pvTotal   = pvMeta.total  ?? 0;
+
+    let activeRange = 30;
+
+    function renderAll(days) {
+      const errors = filterErrors(allErrors, days);
+      renderKPIs(errors, pvTotal);
+      renderErrorTrendChart(errors, days);
+      renderTopPagesChart(errors);
+      renderBrowserChart(errors);
+      renderPlatformChart(errors);
+      renderErrorLog(errors);
+      renderTopPagesTable(errors);
+      renderRecommendations(errors);
+    }
+
+    // Wire page-level range controls
+    const pageControls = document.getElementById('pageRangeControls');
+    if (pageControls) {
+      pageControls.addEventListener('click', e => {
+        const btn = e.target.closest('[data-range]');
+        if (!btn) return;
+        pageControls.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeRange = Number(btn.dataset.range);
+        renderAll(activeRange);
+      });
+    }
+
+    renderAll(activeRange);
+
   } catch (err) {
     console.error('[errors]', err);
     showError(err.message);
