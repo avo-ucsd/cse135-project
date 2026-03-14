@@ -774,7 +774,7 @@ function renderRecommendations(errors) {
   const container = document.getElementById('recommendations-list');
   if (!container) return;
 
-  // Top 3 pages by error count → recommend investigation
+  // ── Per-page recommendations ──────────────────────────────
   const urlMap = new Map();
   for (const row of errors) {
     const url = row.url ?? '(unknown)';
@@ -795,7 +795,7 @@ function renderRecommendations(errors) {
 
   const PRIORITY_ICONS = ['🔴', '🟠', '🟡', '🟡', '🟢'];
 
-  const items = sorted.map(([url, s], i) => {
+  const pageItems = sorted.map(([url, s], i) => {
     const path = pathname(url) || '/';
     const pct  = total > 0 ? ((s.count / total) * 100).toFixed(0) : 0;
     const dominantType = [...s.types.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
@@ -815,7 +815,65 @@ function renderRecommendations(errors) {
       </li>`;
   });
 
-  container.innerHTML = items.join('');
+  // ── Browser breakdown recommendation ─────────────────────
+  const browserMap = new Map();
+  for (const row of errors) {
+    const { browser } = parsePayload(row.raw_payload);
+    let b = String(browser ?? '—');
+    if (/chrome/i.test(b) && !/edge|opr/i.test(b)) b = 'Chrome';
+    else if (/firefox/i.test(b)) b = 'Firefox';
+    else if (/safari/i.test(b) && !/chrome/i.test(b)) b = 'Safari';
+    else if (/edge/i.test(b)) b = 'Edge';
+    else if (/opr|opera/i.test(b)) b = 'Opera';
+    else b = 'Unknown';
+    browserMap.set(b, (browserMap.get(b) ?? 0) + Number(row.error_count ?? 1));
+  }
+
+  const browsersSorted = [...browserMap.entries()].sort((a, b) => b[1] - a[1]);
+  const allUnknown = browsersSorted.length === 0 ||
+    (browsersSorted.length === 1 && browsersSorted[0][0] === 'Unknown');
+
+  let browserItem;
+  if (allUnknown) {
+    // Collection gap — all browsers are unknown
+    browserItem = `
+      <li class="rec-item rec-item--warning">
+        <span class="rec-priority">⚠️</span>
+        <div class="rec-body">
+          <strong class="rec-page">Fix: Browser &amp; OS data not being collected</strong>
+          <span class="rec-meta rec-meta--warning">All errors report Unknown browser — client-side collection gap</span>
+          <p class="rec-hint">
+            The error beacon is not capturing <code>navigator.userAgent</code> or a parsed browser/OS field.
+            Without this, it is impossible to determine whether errors are browser-specific (e.g. a Safari
+            CSS bug, an Edge compatibility issue) or platform-specific (mobile vs. desktop).
+            Add <code>userAgent: navigator.userAgent</code> to the payload sent via
+            <code>navigator.sendBeacon()</code> on both the <code>error</code> and
+            <code>unhandledrejection</code> listeners, then parse it server-side into
+            <code>browser</code> and <code>platform</code> fields before storing.
+          </p>
+        </div>
+      </li>`;
+  } else {
+    // We have real browser data — surface the top offending browser
+    const topBrowser = browsersSorted[0][0];
+    const topCount   = browsersSorted[0][1];
+    const topPct     = total > 0 ? ((topCount / total) * 100).toFixed(0) : 0;
+    const browserHint = topBrowser === 'Safari' ? 'Safari has stricter third-party cookie and IndexedDB policies; check for storage-access errors.'
+                      : topBrowser === 'Firefox' ? 'Verify CSP headers and mixed-content rules, which Firefox enforces more strictly.'
+                      : topBrowser === 'Edge'    ? 'Check for IE-compatibility mode being triggered on older enterprise machines.'
+                      : `Audit recent JS changes for APIs not yet supported in ${escHtml(topBrowser)}.`;
+    browserItem = `
+      <li class="rec-item">
+        <span class="rec-priority">🌐</span>
+        <div class="rec-body">
+          <strong class="rec-page">Browser focus: ${escHtml(topBrowser)}</strong>
+          <span class="rec-meta">${topCount.toLocaleString()} errors (${topPct}% of total) originate from ${escHtml(topBrowser)}</span>
+          <p class="rec-hint">${browserHint} Cross-browser test fixes in ${escHtml(topBrowser)} before rolling out.</p>
+        </div>
+      </li>`;
+  }
+
+  container.innerHTML = [...pageItems, browserItem].join('');
 }
 
 // ── Error banner ──────────────────────────────────────────────────────────────

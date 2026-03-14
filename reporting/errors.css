@@ -258,3 +258,26 @@
   color: #9aa3bf;
   line-height: 1.45;
 }
+
+.rec-hint code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: #c0c8e0;
+}
+
+.rec-item--warning {
+  border-color: rgba(247, 162, 79, 0.35);
+  background: rgba(247, 162, 79, 0.05);
+}
+
+.rec-item--warning:hover {
+  background: rgba(247, 162, 79, 0.09);
+}
+
+.rec-meta--warning {
+  color: #f7a24f;
+}
